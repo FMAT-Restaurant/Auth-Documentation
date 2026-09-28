@@ -14,9 +14,9 @@
 Este repositorio contiene la definición documental, formal y verificable del bounded context **Auth** (Autenticación, Autorización y Gestión de Personal) del ecosistema distribuido **FMAT Restaurant**, desarrollado como proyecto integrador para la materia de *Verificación y Validación* en la Facultad de Matemáticas (UADY).
 
 Adicionalmente, este repositorio centraliza las especificaciones operativas de las responsabilidades transversales asignadas al equipo de Auth:
-1. **Microservicio de Autenticación y Autorización (Auth)**: Gestión autoritativa de restaurantes (tenants), credenciales, ciclo de vida del personal y emisión de tokens criptográficos (JWT).
-2. **API Gateway**: Perímetro de seguridad, validación de firmas digitales de acceso, autorización RBAC perimetral y propagación segura de contexto de usuario hacia microservices internos.
-3. **Broker de Eventos (RabbitMQ)**: Topología, exchanges y contratos de eventos emitidos ante cambios en el personal (como la sincronización de meseros activos hacia el microservicio de Sala/Host).
+1. **Microservicio de Autenticación y Autorización (Auth)**: Gestión autoritativa de restaurantes (tenants), credenciales, ciclo de vida del personal, roles como etiquetas dinámicas, matriz de permisos granulares (PBAC) y emisión de tokens criptográficos (JWT).
+2. **API Gateway**: Perímetro de seguridad, validación de firmas digitales de acceso, autorización perimetral y propagación segura de contexto de usuario y permisos hacia microservicios internos.
+3. **Broker de Eventos (RabbitMQ)**: Topología, exchanges y contratos de eventos emitidos ante cambios en el personal (como la sincronización de personal habilitado para servicio hacia el microservicio de Sala/Host).
 
 ---
 
@@ -35,7 +35,7 @@ Auth-Documentation/
 │       ├── non-functional-requirements.md# Requisitos no funcionales (NFR-AUTH): seguridad, rendimiento y auditoría
 │       ├── configuration.md              # Variables de entorno, topología de colas RabbitMQ y perfiles
 │       ├── traceability.md               # Matriz de trazabilidad (Requisitos, Reglas, Endpoints, Eventos, Pruebas)
-│       └── open.md                       # Decisiones abiertas, supuestos y extensiones futuras
+│       └── open.md                       # Decisiones consolidadas, supuestos y extensiones futuras
 └── README.md                             # Guía general de la especificación
 ```
 
@@ -45,14 +45,14 @@ Auth-Documentation/
 
 | Documento | Enlace | Resumen de Contenido |
 | :--- | :--- | :--- |
-| **01. Contexto y Dominio** | [context.md](output/ers/context.md) | Bounded context, actores (Gerente/Admin, Host, Almacenista, Mesero, Chef Master) y ownership de identidad. |
-| **02. Arquitectura y Componentes** | [architecture.md](output/ers/architecture.md) | Flujo perimetral API Gateway, esquema JWT, topología RabbitMQ y modelo entidad-relación. |
-| **03. Reglas de Negocio e Invariantes** | [business-rules.md](output/ers/business-rules.md) | Reglas de asignación de roles, invariantes formales de unicidad de ID `XYYYYYY`, obligatoriedad de roles y control de contraseñas temporales. |
+| **01. Contexto y Dominio** | [context.md](output/ers/context.md) | Bounded context, modelo de autorización PBAC, roles como etiquetas dinámicas organizacionales y catálogo de permisos. |
+| **02. Arquitectura y Componentes** | [architecture.md](output/ers/architecture.md) | Flujo perimetral API Gateway, esquema JWT con claims de permisos, topología RabbitMQ y modelo entidad-relación. |
+| **03. Reglas de Negocio e Invariantes** | [business-rules.md](output/ers/business-rules.md) | Reglas de asignación de permisos, invariantes formales de unicidad de ID `E000001`, obligatoriedad de permisos y control de contraseñas temporales. |
 | **04. Requisitos Funcionales** | [functional-requirements.md](output/ers/functional-requirements.md) | Catálogo formal de requisitos (`REQ-AUTH-001` al `REQ-AUTH-020`) con criterio y método de verificación formal de V&V. |
 | **05. Requisitos No Funcionales** | [non-functional-requirements.md](output/ers/non-functional-requirements.md) | Políticas criptográficas (Argon2id/bcrypt, RS256/Ed25519), latencias perimetrales y seguridad en descanso y tránsito. |
 | **06. Configuración y Despliegue** | [configuration.md](output/ers/configuration.md) | Configuración de entorno, llaves de firma, tópicos/exchanges de RabbitMQ y perfiles de ejecución. |
 | **07. Trazabilidad** | [traceability.md](output/ers/traceability.md) | Mapeo bidireccional entre requisitos, reglas de negocio, endpoints REST, eventos asíncronos y casos de prueba. |
-| **08. Puntos Abiertos** | [open.md](output/ers/open.md) | Consideraciones de evolución, rotación de claves e integración con proveedores de identidad externos. |
+| **08. Puntos Abiertos** | [open.md](output/ers/open.md) | Decisiones consolidadas (ID prefijo `E`), supuestos de evaluación en Gateway y extensiones post-MVP. |
 
 ---
 

@@ -2,7 +2,7 @@
 
 ## Diagrama de Contenedores y Flujo Perimetral
 
-La solución articula tres elementos técnicos bajo la responsabilidad directa del equipo de **Auth**: el servicio de **Autenticación (Auth MS)**, el **API Gateway** y el broker de mensajería **RabbitMQ**.
+La solución articula tres elementos técnicos bajo la responsabilidad directa del equipo de **Auth**: el servicio de **Autenticación y Autorización (Auth MS)**, el **API Gateway** y el broker de mensajería **RabbitMQ**.
 
 ```mermaid
 flowchart TD
@@ -12,11 +12,11 @@ flowchart TD
     end
 
     subgraph PerimetroSeguridad["Perímetro de Red Pública / DMZ"]
-        Gateway["API GATEWAY<br/>- Proxy Inverso & Reverse Router<br/>- Validador de Token JWT<br/>- Inspector de Restricción TEMPORARY<br/>- Inyector de Cabeceras X-User-*"]
+        Gateway["API GATEWAY<br/>- Reverse Proxy & Enrutador<br/>- Validador Criptográfico JWT<br/>- Inspector de Restricción TEMPORARY<br/>- Autorizador PBAC / Inyector X-User-*"]
     end
 
     subgraph RedInterna["Red Privada de Microservicios"]
-        AuthMS["MICROSERVICIO AUTH<br/>- Core de Autenticación<br/>- Emisor de JWT / Refresh Tokens<br/>- Generador de Staff ID (XYYYYYY)<br/>- Hash Argon2id / bcrypt"]
+        AuthMS["MICROSERVICIO AUTH<br/>- Core de Autenticación<br/>- Emisor de JWT / Refresh Tokens<br/>- Gestor de Permisos PBAC y Etiquetas de Rol<br/>- Generador de Staff ID (E000001)"]
         MenuMS["Servicio Menu"]
         OrdersMS["Servicio Orders + KDS"]
         SalaMS["Servicio Sala / Host"]
@@ -33,37 +33,41 @@ flowchart TD
     StaffApp -->|"HTTPS (JSON REST)"| Gateway
 
     Gateway -->|"/api/v1/auth/*"| AuthMS
-    Gateway -->|"/api/v1/menu/* con X-User-Roles"| MenuMS
-    Gateway -->|"/api/v1/orders/* con X-User-Roles"| OrdersMS
-    Gateway -->|"/api/v1/sala/* con X-User-Roles"| SalaMS
-    Gateway -->|"/api/v1/inventory/* con X-User-Roles"| InventoryMS
-    Gateway -->|"/api/v1/billing/* con X-User-Roles"| BillingMS
+    Gateway -->|"/api/v1/menu/* con X-User-Permissions"| MenuMS
+    Gateway -->|"/api/v1/orders/* con X-User-Permissions"| OrdersMS
+    Gateway -->|"/api/v1/sala/* con X-User-Permissions"| SalaMS
+    Gateway -->|"/api/v1/inventory/* con X-User-Permissions"| InventoryMS
+    Gateway -->|"/api/v1/billing/* con X-User-Permissions"| BillingMS
 
     AuthMS <--> AuthDB
     AuthMS -.->|"Publicación de eventos de dominio"| RabbitMQ
-    RabbitMQ -.->|"Consumo asíncrono (meseros)"| SalaMS
+    RabbitMQ -.->|"Consumo asíncrono (personal de piso)"| SalaMS
 ```
 
 ---
 
-## El Rol del API Gateway en la Autorización
+## El Rol del API Gateway en la Autorización Perimetral
 
-El **API Gateway** actúa como el guardián perimetral del sistema. Ningún microservicio interno (Menu, Orders, Sala, Inventory, etc.) expone sus puertos directamente al internet público. 
+El **API Gateway** actúa como el guardián perimetral del sistema. Ningún microservicio interno (Menu, Orders, Sala, Inventory, Billing) expone sus puertos directamente al internet público.
 
 ### Responsabilidades Perimetrales del Gateway:
 1. **Validación Criptográfica de JWT:** Verifica la firma digital del token (`RS256` o `HS256`), la expiración temporal (`exp`) y el emisor (`iss`).
 2. **Evaluación de Contraseña Temporal (`passwordStatus == TEMPORARY`):**
-   - Si un usuario presenta un token con `mustChangePassword: true`, el API Gateway **rechaza** cualquier petición dirigida a microservicios operativos (`/api/v1/orders/*`, `/api/v1/menu/*`, etc.) con un código HTTP `403 Forbidden` y el error estructurado `PASSWORD_CHANGE_REQUIRED`.
+   - Si un usuario presenta un token con `mustChangePassword: true`, el API Gateway **rechaza** cualquier petición dirigida a microservicios operativos (`/api/v1/orders/*`, `/api/v1/inventory/*`, etc.) con un código HTTP `403 Forbidden` y el error estructurado `PASSWORD_CHANGE_REQUIRED`.
    - Únicamente permite peticiones dirigidas a:
      - `POST /api/v1/auth/change-initial-password`
      - `POST /api/v1/auth/logout`
      - `GET /api/v1/auth/me`
-3. **Propagación Segura de Identidad (Header Sanitization):**
+3. **Control de Acceso Basado en Permisos (PBAC):**
+   - El Gateway puede validar a nivel perimetral que el token cuente con el permiso requerido para la ruta (o delegar la verificación fina al microservicio downstream mediante cabeceras).
+4. **Propagación Segura de Identidad y Permisos (Header Sanitization):**
    El API Gateway elimina cualquier cabecera `X-User-*` proveniente del cliente exterior para prevenir inyección de identidad (*Header Spoofing*), y tras validar el JWT, inyecta cabeceras confiables hacia la red interna:
    - `X-User-Id`: UUID único del usuario.
-   - `X-Staff-Id`: Identificador `XYYYYYY` (o `ADMIN` para administradores).
+   - `X-Staff-Id`: Identificador `XYYYYYY` (ej. `E000104`, o `ADMIN` para gerentes).
    - `X-Restaurant-Id`: UUID del restaurante propietario.
-   - `X-User-Roles`: Lista separada por comas (`HOST,MESERO`).
+   - `X-User-Role-Label`: Etiqueta descriptiva del rol (ej. `Líder de inventario`).
+   - `X-User-Permissions`: Lista de permisos granulares separada por comas (`inventory:view,inventory:ingredients:create,inventory:stock:update_status`).
+   - `X-Password-Temporary`: Booleano indicativo.
 
 ---
 
@@ -89,35 +93,42 @@ El token de acceso emitido por el servicio Auth es un JSON Web Token estándar (
   "iat": 1790294400,
   "exp": 1790298000,
   "restaurantId": "rest_a1b2c3d4-e5f6-7890-abcd-ef1234567890",
-  "staffId": "M000104",
-  "username": "M000104",
-  "displayName": "Carlos Pérez",
-  "roles": [
-    "MESERO"
+  "staffId": "E000104",
+  "username": "E000104",
+  "displayName": "Juan Pérez",
+  "roleLabel": "Líder de inventario",
+  "permissions": [
+    "inventory:view",
+    "inventory:ingredients:create",
+    "inventory:ingredients:update",
+    "inventory:ingredients:delete",
+    "inventory:stock:update_status",
+    "inventory:stock:adjust"
   ],
-  "mustChangePassword": true
+  "mustChangePassword": false
 }
 ```
 
 ### Definición de Claims:
 - `sub`: Identificador universal único del usuario (UUID v4).
 - `restaurantId`: Identificador del restaurante para aislamiento multi-tenant.
-- `staffId`: Identificador asignado (`XYYYYYY`). Para el Administrador/Gerente toma el valor literal `ADMIN`.
-- `roles`: Array de cadenas con los roles autorizados: `ADMINISTRADOR`, `HOST`, `ALMACENISTA`, `MESERO`, `CHEF_MASTER`.
+- `staffId`: Identificador estructurado `XYYYYYY` con prefijo canónico `E`. Para el Administrador/Gerente toma el valor literal `ADMIN`.
+- `roleLabel`: Cadena de texto libre asignada por el Administrador para identificar el puesto o rol del empleado (ej. *"Líder de inventario"*).
+- `permissions`: Arreglo de strings con los códigos canónicos de permisos asignados al usuario (`<modulo>:<recurso>:<accion>`). Para el Gerente/Administrador contiene `["*"]` (acceso irrestricto de superusuario).
 - `mustChangePassword`: Booleano que indica si el usuario debe actualizar obligatoriamente su clave temporal antes de operar.
 
 ---
 
 ## Modelo Entidad-Relación y Persistencia
 
-El modelo de datos relacional de Auth garantiza la integridad referencial, el aislamiento por restaurante y el soporte estricto a roles múltiples.
+El modelo de datos relacional de Auth soporta roles como etiquetas descriptivas y permisos granulares por microservicio sin enums rígidos precodificados:
 
 ```mermaid
 erDiagram
     RESTAURANT ||--o{ USER : "posee"
-    USER ||--o| STAFF_PROFILE : "extiende (si no es admin)"
-    USER ||--o{ USER_ROLE : "tiene asignados"
-    ROLE ||--o{ USER_ROLE : "es asignado a"
+    USER ||--o| STAFF_PROFILE : "extiende (si es personal)"
+    USER ||--o{ STAFF_PERMISSION : "tiene concedidos"
+    SYSTEM_PERMISSION ||--o{ STAFF_PERMISSION : "es otorgado mediante"
     USER ||--o{ REFRESH_TOKEN : "mantiene sesiones"
     USER ||--o{ AUDIT_LOG : "registra eventos"
 
@@ -146,23 +157,24 @@ erDiagram
 
     STAFF_PROFILE {
         uuid user_id PK, FK
-        string staff_id UK "XYYYYYY único por restaurante"
+        string staff_id UK "XYYYYYY único por restaurante (ej. E000104)"
+        string role_label "Etiqueta descriptiva (ej. Líder de inventario)"
         string first_name
         string last_name
         string phone
         timestamp hired_at
     }
 
-    ROLE {
-        string code PK "ADMINISTRADOR, HOST, ALMACENISTA, MESERO, CHEF_MASTER"
+    SYSTEM_PERMISSION {
+        string code PK "inventory:ingredients:create, etc."
+        string module "inventory, menu, orders, kitchen, sala, billing"
         string name
         string description
-        boolean is_assignable "false para ADMINISTRADOR"
     }
 
-    USER_ROLE {
+    STAFF_PERMISSION {
         uuid user_id PK, FK
-        string role_code PK, FK
+        string permission_code PK, FK
         timestamp assigned_at
         uuid assigned_by_user_id FK
     }
@@ -179,7 +191,7 @@ erDiagram
     AUDIT_LOG {
         uuid id PK
         uuid user_id FK
-        string action "LOGIN_SUCCESS, PWD_CHANGED, ROLE_UPDATED"
+        string action "LOGIN_SUCCESS, PWD_CHANGED, PERMISSIONS_UPDATED"
         string ip_address
         string user_agent
         timestamp created_at
@@ -198,9 +210,9 @@ sequenceDiagram
     participant UI as Frontend / Dashboard
     participant GW as API Gateway
     participant Auth as Servicio Auth
-    participant Ops as Microservicio Operativo (ej. Orders)
+    participant Ops as Microservicio Operativo (ej. Inventory)
 
-    Staff->>UI: Ingresa Staff ID (M000104) y Contraseña Temporal
+    Staff->>UI: Ingresa Staff ID (E000104) y Contraseña Temporal
     UI->>GW: POST /api/v1/auth/login { identifier, password }
     GW->>Auth: Valida credenciales
     Auth-->>GW: Token JWT (mustChangePassword: true) + Refresh Token
@@ -209,8 +221,8 @@ sequenceDiagram
     UI->>UI: Detecta mustChangePassword == true<br/>Redirige obligatoriamente a modal/vista /change-password
 
     opt Intento de evasión hacia microservicio operativo
-        Staff->>UI: Intenta navegar a /orders
-        UI->>GW: GET /api/v1/orders (Bearer JWT)
+        Staff->>UI: Intenta navegar a /inventory
+        UI->>GW: GET /api/v1/inventory/ingredients (Bearer JWT)
         GW->>GW: Detecta mustChangePassword: true
         GW-->>UI: 403 Forbidden { code: "PASSWORD_CHANGE_REQUIRED" }
         UI->>Staff: Muestra alerta: "Debe cambiar su contraseña para continuar"
@@ -221,20 +233,20 @@ sequenceDiagram
     GW->>Auth: Actualiza hash y establece password_status = 'ACTIVE'
     Auth-->>GW: Nuevo Token JWT (mustChangePassword: false)
     GW-->>UI: 200 OK + Nuevo JWT
-    UI->>UI: Habilita navegación normal al Dashboard según sus roles
+    UI->>UI: Habilita navegación normal al Dashboard según sus permisos concedidos
 ```
 
 ---
 
 ## Integración con RabbitMQ (Eventos de Personal)
 
-El servicio Auth actúa como productor de eventos para notificar al clúster de cambios relevantes en el personal.
+El servicio Auth actúa como productor de eventos para notificar al clúster de cambios relevantes en el personal y sus facultades operacionales.
 
 ### Topología de Mensajería:
 - **Exchange:** `restaurant.staff.events` (Tipo `topic`, durable).
 - **Routing Keys:**
-  - `staff.created`: Emitido cuando el gerente da de alta un nuevo empleado.
-  - `staff.roles.updated`: Emitido al modificar los roles de un empleado.
+  - `staff.created`: Emitido cuando el gerente da de alta un nuevo empleado con su etiqueta y permisos.
+  - `staff.permissions.updated`: Emitido al modificar la etiqueta de rol o la matriz de permisos de un empleado.
   - `staff.status.changed`: Emitido al activar o desactivar un perfil de personal.
 
 ### Ejemplo de Evento: `StaffMemberCreated`
@@ -244,19 +256,27 @@ El servicio Auth actúa como productor de eventos para notificar al clúster de 
   "type": "urn:fmat:event:staff:member-created",
   "source": "urn:fmat:service:auth",
   "id": "evt_7f1c4e92-31d8-4fbb-b2d9-11c2a048a120",
-  "time": "2026-09-24T18:30:00Z",
+  "time": "2026-09-25T00:30:00Z",
   "datacontenttype": "application/json",
   "data": {
     "restaurantId": "rest_a1b2c3d4-e5f6-7890-abcd-ef1234567890",
     "userId": "usr_9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d",
-    "staffId": "M000104",
-    "firstName": "Carlos",
+    "staffId": "E000104",
+    "firstName": "Juan",
     "lastName": "Pérez",
-    "roles": ["MESERO"],
+    "roleLabel": "Líder de inventario",
+    "permissions": [
+      "inventory:view",
+      "inventory:ingredients:create",
+      "inventory:ingredients:update",
+      "inventory:ingredients:delete",
+      "inventory:stock:update_status",
+      "inventory:stock:adjust"
+    ],
     "isActive": true
   }
 }
 ```
 
 ### Consumo en Microservicio `Sala`:
-- El servicio Sala mantiene una cola enlazada a `staff.*` para actualizar su tabla local de meseros elegibles, garantizando que el `Host` disponga siempre de la lista vigente de meseros en piso para asignación de mesas.
+- El servicio Sala mantiene una cola enlazada a `staff.*`. Al recibir eventos de personal, evalúa la presencia del permiso `orders:create` (o permisos de atención de comensales). Si el empleado cuenta con dicha capacidad, Sala lo incluye en la tabla de personal disponible para atender mesas, desacoplando completamente la lógica interna de nombres y títulos de puesto.

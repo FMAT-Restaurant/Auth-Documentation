@@ -52,7 +52,7 @@ flowchart LR
     ConsumerSala["Microservicio Sala / Host<br/>(Sincroniza Meseros)"]
     ConsumerAudit["Servicio Auditoría<br/>(Registros Históricos)"]
 
-    Producer -->|"Publish: staff.created,<br/>staff.roles.updated"| Exchange
+    Producer -->|"Publish: staff.created,<br/>staff.permissions.updated"| Exchange
     Exchange -->|"Routing match: staff.*"| QueueSala
     Exchange -->|"Routing match: staff.#"| QueueAudit
     QueueSala --> ConsumerSala

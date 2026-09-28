@@ -129,9 +129,9 @@ El exchange `restaurant.staff.events` y las colas vinculadas en RabbitMQ deberá
 ### NFR-AUTH-AUD-001 — Registro Inmutable de Eventos Críticos de Seguridad
 
 **Requisito:**
-El servicio Auth deberá registrar de forma estructurada en su bitácora de auditoría todo intento fallido de autenticación, alta de personal, modificación de roles, revocación de credenciales y cambio de contraseñas, incluyendo marca temporal ISO 8601, dirección IP de origen y usuario ejecutor.
+El servicio Auth deberá registrar de forma estructurada en su bitácora de auditoría todo intento fallido de autenticación, alta de personal, modificación de etiquetas de rol o permisos, revocación de credenciales y cambio de contraseñas, incluyendo marca temporal ISO 8601, dirección IP de origen y usuario ejecutor.
 
 **Tipo:** No Funcional / Auditoría  
 **Fuente:** Estándares de Trazabilidad y Verificación FMAT  
-**Verificación:** Prueba: Realizar una secuencia de acciones críticas (login fallido, cambio de roles) e inspeccionar que las filas correspondientes en la tabla `AUDIT_LOG` se registren de forma íntegra.  
+**Verificación:** Prueba: Realizar una secuencia de acciones críticas (login fallido, cambio de permisos) e inspeccionar que las filas correspondientes en la tabla `AUDIT_LOG` se registren de forma íntegra.  
 **Estado:** Confirmado  
