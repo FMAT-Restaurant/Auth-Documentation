@@ -62,21 +62,19 @@ El **API Gateway** actúa como el guardián perimetral del sistema. Ningún micr
    El API Gateway elimina cualquier cabecera `X-User-*` proveniente del cliente exterior para prevenir inyección de identidad (*Header Spoofing*), y tras validar el JWT, inyecta cabeceras confiables hacia la red interna:
    - `X-User-Id`: UUID único del usuario.
    - `X-Staff-Id`: Identificador `XYYYYYY` (o `ADMIN` para administradores).
-   - `X-Restaurant-Id`: UUID del restaurante propietario.
    - `X-User-Roles`: Lista separada por comas (`HOST,MESERO`).
 
 ---
 
 ## Especificación del Token de Acceso (JWT)
 
-El token de acceso emitido por el servicio Auth es un JSON Web Token estándar (RFC 7519).
+El token de acceso emitido por el servicio Auth es un JSON Web Token estándar (RFC 7519) firmado con algoritmo simétrico `HS256`.
 
 ### Formato de Cabecera (Header)
 ```json
 {
-  "alg": "RS256",
-  "typ": "JWT",
-  "kid": "auth-key-2026-v1"
+  "alg": "HS256",
+  "typ": "JWT"
 }
 ```
 
@@ -88,7 +86,6 @@ El token de acceso emitido por el servicio Auth es un JSON Web Token estándar (
   "aud": "urn:fmat:restaurant:api",
   "iat": 1790294400,
   "exp": 1790298000,
-  "restaurantId": "rest_a1b2c3d4-e5f6-7890-abcd-ef1234567890",
   "staffId": "M000104",
   "username": "M000104",
   "displayName": "Carlos Pérez",
@@ -101,7 +98,6 @@ El token de acceso emitido por el servicio Auth es un JSON Web Token estándar (
 
 ### Definición de Claims:
 - `sub`: Identificador universal único del usuario (UUID v4).
-- `restaurantId`: Identificador del restaurante para aislamiento multi-tenant.
 - `staffId`: Identificador asignado (`XYYYYYY`). Para el Administrador/Gerente toma el valor literal `ADMIN`.
 - `roles`: Array de cadenas con los roles autorizados: `ADMINISTRADOR`, `HOST`, `ALMACENISTA`, `MESERO`, `CHEF_MASTER`.
 - `mustChangePassword`: Booleano que indica si el usuario debe actualizar obligatoriamente su clave temporal antes de operar.
@@ -114,29 +110,16 @@ El modelo de datos relacional de Auth garantiza la integridad referencial, el ai
 
 ```mermaid
 erDiagram
-    RESTAURANT ||--o{ USER : "posee"
     USER ||--o| STAFF_PROFILE : "extiende (si no es admin)"
     USER ||--o{ USER_ROLE : "tiene asignados"
     ROLE ||--o{ USER_ROLE : "es asignado a"
     USER ||--o{ REFRESH_TOKEN : "mantiene sesiones"
     USER ||--o{ AUDIT_LOG : "registra eventos"
 
-    RESTAURANT {
-        uuid id PK
-        string name
-        string commercial_name
-        string legal_id
-        string address
-        string status "ACTIVE, SUSPENDED"
-        timestamp created_at
-        timestamp updated_at
-    }
-
     USER {
         uuid id PK
-        uuid restaurant_id FK
         string user_type "ADMIN, STAFF"
-        string email UK "Solo para administradores"
+        string email UK "Solo para administrador inicial"
         string password_hash
         string password_status "TEMPORARY, ACTIVE"
         boolean is_active
@@ -146,7 +129,7 @@ erDiagram
 
     STAFF_PROFILE {
         uuid user_id PK, FK
-        string staff_id UK "XYYYYYY único por restaurante"
+        string staff_id UK "XYYYYYY único en la base de datos"
         string first_name
         string last_name
         string phone
@@ -247,7 +230,6 @@ El servicio Auth actúa como productor de eventos para notificar al clúster de 
   "time": "2026-09-24T18:30:00Z",
   "datacontenttype": "application/json",
   "data": {
-    "restaurantId": "rest_a1b2c3d4-e5f6-7890-abcd-ef1234567890",
     "userId": "usr_9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d",
     "staffId": "M000104",
     "firstName": "Carlos",

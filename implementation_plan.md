@@ -117,7 +117,7 @@ Presentación formal del microservicio Auth, responsabilidades del equipo (Auth,
 Contexto del Bounded Context Auth, definición de actores (Administrador, Host, Almacenista, Mesero, Chef Master), límites de ownership de datos (Auth es autoridad exclusiva sobre identidades, credenciales, tokens y asignación de roles).
 
 #### [NEW] [architecture.md](file:///Users/rubenperez/Documents/UADY/Verificacion%20y%20Validacion/Auth-Documentation/output/ers/architecture.md)
-Arquitectura interna del microservicio, diagrama C4 / Flujos de interacción, diseño del modelo Entidad-Relación (Restaurante, Usuario, Personal, Rol, Sesión/RefreshToken), especificación del token JWT (Claims estándar y personalizados: `sub`, `staffId`, `restaurantId`, `roles`, `pwdChangeRequired`), relación con API Gateway y contratos de eventos en RabbitMQ.
+Arquitectura interna del microservicio, diagrama C4 / Flujos de interacción, diseño del modelo Entidad-Relación (Usuario, Personal, Rol, Sesión/RefreshToken), especificación del token JWT (Claims estándar y personalizados: `sub`, `staffId`, `roles`, `mustChangePassword`), relación con API Gateway y contratos de eventos en RabbitMQ.
 
 #### [NEW] [business-rules.md](file:///Users/rubenperez/Documents/UADY/Verificacion%20y%20Validacion/Auth-Documentation/output/ers/business-rules.md)
 Reglas de negocio formales (`BR-AUTH-001` a `BR-AUTH-020`) e invariantes matemáticas de integridad (`INV-AUTH-001` a `INV-AUTH-010`), tales como:
@@ -125,7 +125,7 @@ Reglas de negocio formales (`BR-AUTH-001` a `BR-AUTH-020`) e invariantes matemá
 - Obligatoriedad de asignación de al menos un rol al personal.
 - Exclusividad del rol `ADMINISTRADOR`.
 - Restricción estricta de operaciones operacionales bajo contraseña temporal.
-- Invariante de aislamiento multi-tenant por `restaurantId`.
+- Esquema single-tenant con base de datos local dedicada.
 
 #### [NEW] [functional-requirements.md](file:///Users/rubenperez/Documents/UADY/Verificacion%20y%20Validacion/Auth-Documentation/output/ers/functional-requirements.md)
 Catálogo formal de requisitos funcionales (`REQ-AUTH-001` a `REQ-AUTH-025`) bajo el esquema estricto de V&V:

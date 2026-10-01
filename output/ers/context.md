@@ -5,19 +5,20 @@
 El servicio **Auth** es la autoridad exclusiva sobre la **identidad, autenticación, autorización y administración de personal** del ecosistema distribuido FMAT Restaurant. Sus responsabilidades se concentran en dar respuesta certera y verificable a cuatro preguntas fundamentales del sistema:
 
 1. **¿Quién es el actor que intenta acceder al sistema?** (Autenticación e identificación unívoca).
-2. **¿A qué restaurante o tenant pertenece su cuenta?** (Aislamiento de dominio multi-restaurante).
-3. **¿Qué funciones, vistas y microservicios está autorizado a operar?** (Control de acceso basado en roles - RBAC).
-4. **¿Cuál es el estado operativo de sus credenciales de acceso?** (Vigencia de contraseña, forzado de actualización de contraseña temporal, sesiones activas).
+2. **¿Qué funciones, vistas y microservicios está autorizado a operar?** (Control de acceso basado en roles - RBAC).
+3. **¿Cuál es el estado operativo de sus credenciales de acceso?** (Vigencia de contraseña, forzado de actualización de contraseña temporal, sesiones activas).
+4. **¿Quién tiene autoridad sobre las modificaciones de perfil?** (Restricción estricta: solo el Administrador puede editar datos personales; el personal operativo no puede auto-modificarse).
 
 En consecuencia, las responsabilidades de Auth abarcan:
 
 - **Custodia de credenciales y seguridad:** Almacenamiento seguro, salado y dispersión (hashing) de contraseñas de gerentes y personal operativo mediante funciones de derivación criptográfica de alta resistencia (Argon2id o bcrypt).
-- **Aislamiento Multi-Tenant:** Custodiar la pertenencia estricta de cuentas y personal a su respectivo `Restaurant`, asegurando que ningún usuario pueda visualizar ni interactuar con datos ajenos a su tenant.
+- **Instancia Local Single-Tenant (Estilo Soft Restaurant):** La aplicación opera bajo una instancia y base de datos dedicada para el restaurante local. No existen identificadores de restaurante (`restaurantId`), tablas multi-empresa ni aislamiento multi-tenant.
 - **Gestión del ciclo de vida del personal:** Registro, habilitación, deshabilitación y actualización de perfiles de miembros de equipo por parte del Gerente/Administrador del restaurante.
-- **Emisión de identificadores estructurados:** Asignación automática e inmutable del identificador de personal con máscara `XYYYYYY` (1 carácter alfabético en mayúscula seguido de 6 dígitos numéricos).
+- **Restricción de Modificación de Perfil:** Solo el Administrador puede auto-editar su nombre, apellido y teléfono; el personal operativo (`STAFF`) tiene bloqueada la auto-edición de sus datos personales.
+- **Emisión de identificadores estructurados:** Asignación automática e inmutable del identificador de personal con máscara `XYYYYYY` (1 carácter alfabético en mayúscula seguido de 6 dígitos numéricos), con unicidad global en la base de datos local.
 - **Gestión de contraseñas temporales y forzado de primer ingreso:** Proveer contraseñas de primer uso configurables por el administrador y forzar la transición a contraseña personal en el primer inicio de sesión mediante contención operativa perimetral.
 - **Autorización basada en roles (RBAC):** Definición y asignación de roles operativos (`HOST`, `ALMACENISTA`, `MESERO`, `CHEF_MASTER`) a cuentas de personal, admitiendo membresía simple o múltiple.
-- **Emisión e invalidación de tokens de acceso:** Generación de JSON Web Tokens (JWT) firmados digitalmente que portan la identidad, el tenant, los roles vigentes y el estado de cambio de contraseña, permitiendo la validación descentralizada en el API Gateway y otros servicios.
+- **Emisión e invalidación de tokens de acceso:** Generación de JSON Web Tokens (JWT) firmados digitalmente (HS256) que portan la identidad, los roles vigentes y el estado de cambio de contraseña, permitiendo la validación descentralizada en el API Gateway y otros servicios.
 - **Publicación de eventos operacionales de personal:** Difusión asíncrona mediante RabbitMQ de eventos de dominio (`StaffMemberCreated`, `StaffRolesUpdated`, `StaffStatusChanged`) para la alimentación de proyecciones dependientes en microservicios consumidores (como el listado de meseros elegibles para asignación de mesas en `Sala/Host`).
 
 ---
@@ -67,7 +68,6 @@ flowchart TD
 4. **Verificación Perimetral en API Gateway:** Los microservicios internos no repiten la autenticación criptográfica pesada en cada endpoint; el API Gateway verifica el token JWT emitido por Auth y despacha a la red interna cabeceras de contexto sanitizadas:
    - `X-User-Id`: Identificador único de usuario.
    - `X-Staff-Id`: Identificador estructurado `XYYYYYY` (o `ADMIN` para gerentes).
-   - `X-Restaurant-Id`: Identificador del restaurante (tenant).
    - `X-User-Roles`: Lista serializada de roles activos (`MESERO`, `HOST`, etc.).
    - `X-Password-Temporary`: Indicador booleano de contraseña provisional.
 
@@ -120,14 +120,14 @@ flowchart TD
 
 ## Lenguaje Ubicuo del Dominio (Glossary)
 
-- **Tenant / Restaurant:** Entidad comercial que agrupa una operación gastronómica independiente con su propio catálogo, inventario, mesas y personal.
-- **Gerente (Restaurant Owner):** Usuario titular del tenant con rol `ADMINISTRADOR`, autorizado para administrar la nómina operativa y configurar el restaurante.
-- **Staff Member (Personal):** Empleado subordinado dado de alta en un restaurante para desempeñar funciones operativas. Posee un `staffId` inmutable y uno o varios roles asignados.
-- **Staff ID (`XYYYYYY`):** Código alfanumérico único por restaurante asignado al personal. Consta de 1 letra en mayúscula indicativa (`X`) seguida de 6 dígitos numéricos secuenciales (`YYYYYY`).
+- **Instancia Local (Single-Tenant):** Despliegue de software dedicado exclusivamente a un restaurante, sin coexistencia de datos ni identificación de múltiples empresas.
+- **Gerente (Restaurant Owner):** Usuario titular con rol `ADMINISTRADOR`, autorizado para administrar la nómina operativa y configurar su propio perfil.
+- **Staff Member (Personal):** Empleado subordinado dado de alta para desempeñar funciones operativas. Posee un `staffId` inmutable y uno o varios roles asignados. No tiene permitido modificar sus datos personales de forma autónoma.
+- **Staff ID (`XYYYYYY`):** Código alfanumérico único global en la base de datos asignado al personal. Consta de 1 letra en mayúscula indicativa (`X`) seguida de 6 dígitos numéricos secuenciales (`YYYYYY`).
 - **Contraseña Temporal (Temporary Password):** Clave inicial generada por el sistema o asignada por el gerente con estado `passwordStatus = TEMPORARY`. Habilita únicamente la sesión restringida de primer ingreso para su reemplazo mandatorio.
 - **Contraseña Personal (Personal Password):** Clave definitiva seleccionada de forma privada por el miembro del personal, que promueve su estado a `passwordStatus = ACTIVE`.
 - **Role-Based Access Control (RBAC):** Mecanismo de control de acceso donde los privilegios de navegación y consumo de APIs se determinan por el conjunto de roles vigentes asociados a la cuenta.
 - **Multi-Rol:** Capacidad formal del modelo de autorizar a un mismo miembro del personal para ejecutar simultáneamente dos o más responsabilidades (por ejemplo, `MESERO` y `HOST`).
-- **Access Token (JWT):** Token criptográfico de corta duración (ej. 15 a 60 minutos) firmado con clave asimétrica o secreta, portador de las alegaciones (claims) del usuario.
+- **Access Token (JWT):** Token criptográfico de corta duración (ej. 15 a 60 minutos) firmado con clave simétrica (HS256), portador de las alegaciones (claims) del usuario.
 - **Refresh Token:** Credencial de larga duración (ej. 7 a 30 días) almacenada de forma segura para renovar Access Tokens sin requerir reingreso de credenciales.
 - **Contención Perimetral:** Mecanismo en el API Gateway y en el Dashboard que bloquea la navegación a microservicios si el token indica `mustChangePassword = true`, forzando la visualización exclusiva del formulario de cambio de clave.

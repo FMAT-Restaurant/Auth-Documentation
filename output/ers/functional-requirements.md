@@ -6,16 +6,16 @@ Cada bloque establece una obligación primaria formal del sistema. Las verificac
 
 <a id="req-auth-001"></a>
 
-### REQ-AUTH-001 — Registro de Restaurante y Cuenta de Administrador
+### REQ-AUTH-001 — Inicialización de Cuenta de Administrador Local
 
 **Requisito:**
-El servicio Auth deberá permitir el registro de un nuevo establecimiento gastronómico (`Restaurant`) proporcionando nombre comercial, razón social, dirección y correo electrónico corporativo, creando de forma atómica la cuenta raíz del Gerente con el rol exclusivo `ADMINISTRADOR`.
+El servicio Auth deberá permitir la inicialización de la cuenta raíz del Gerente (`ADMINISTRADOR`) en la instalación local mediante `POST /api/v1/auth/setup-admin` capturando correo electrónico, contraseña, nombre y apellidos, bloqueando cualquier registro administrativo posterior si ya existe una cuenta de administrador en el sistema.
 
 **Tipo:** Funcional  
 **Fuente:** Especificación de Roles Softrestaurant FMAT  
-**Verificación:** Prueba: Ejecutar el registro de un nuevo restaurante con datos válidos; comprobar que se genera el registro del tenant, que el usuario resultante posee el rol `ADMINISTRADOR`, y rechazar intentos con correo duplicado.  
+**Verificación:** Prueba: Ejecutar la inicialización con datos válidos; comprobar que se genera el usuario administrador con el rol exclusivo `ADMINISTRADOR`. Comprobar que intentos posteriores de inicialización sean rechazados con error HTTP `409 Conflict` o `400 Bad Request`.  
 **Estado:** Confirmado  
-**Reglas Relacionadas:** BR-AUTH-001, BR-AUTH-002, INV-AUTH-002, INV-AUTH-006  
+**Reglas Relacionadas:** BR-AUTH-001, BR-AUTH-002, INV-AUTH-002  
 
 ---
 
@@ -43,9 +43,9 @@ El servicio Auth deberá permitir a un usuario con rol `ADMINISTRADOR` registrar
 
 **Tipo:** Funcional  
 **Fuente:** Requisitos de Gestión de Personal Softrestaurant  
-**Verificación:** Demostración: Desde una sesión de administrador, dar de alta a un miembro del personal y verificar que su perfil quede persistido en la base de datos vinculado al `restaurantId` del administrador ejecutor.  
+**Verificación:** Demostración: Desde una sesión de administrador, dar de alta a un miembro del personal y verificar que su perfil quede persistido en la base de datos local.  
 **Estado:** Confirmado  
-**Reglas Relacionadas:** BR-AUTH-003, BR-AUTH-010, INV-AUTH-001, INV-AUTH-006  
+**Reglas Relacionadas:** BR-AUTH-003, BR-AUTH-010, INV-AUTH-001  
 
 ---
 
@@ -54,11 +54,11 @@ El servicio Auth deberá permitir a un usuario con rol `ADMINISTRADOR` registrar
 ### REQ-AUTH-004 — Generación Automática del Identificador `XYYYYYY`
 
 **Requisito:**
-El servicio Auth deberá asignar automáticamente a cada nuevo miembro del personal un identificador unívoco e inmutable con formato `XYYYYYY`, donde `X` es un carácter alfabético en mayúscula y `YYYYYY` es un correlativo numérico de seis dígitos, garantizando su unicidad dentro del restaurante.
+El servicio Auth deberá asignar automáticamente a cada nuevo miembro del personal un identificador unívoco e inmutable con formato `XYYYYYY`, donde `X` es un carácter alfabético en mayúscula y `YYYYYY` es un correlativo numérico de seis dígitos, garantizando su unicidad en toda la base de datos local.
 
 **Tipo:** Funcional  
 **Fuente:** Especificación de Identificadores de Personal FMAT  
-**Verificación:** Prueba: Registrar múltiples miembros de personal consecutivamente; inspeccionar que todos cumplan con la expresión regular `^[A-Z][0-9]{6}$` y que no se produzcan colisiones en el identificador dentro del mismo restaurante.  
+**Verificación:** Prueba: Registrar múltiples miembros de personal consecutivamente; inspeccionar que todos cumplan con la expresión regular `^[A-Z][0-9]{6}$` y que no se produzcan colisiones en el identificador.  
 **Estado:** Confirmado  
 **Reglas Relacionadas:** BR-AUTH-004, BR-AUTH-005, BR-AUTH-006, INV-AUTH-003, INV-AUTH-004  
 
@@ -133,7 +133,7 @@ El servicio Auth deberá permitir al personal operativo iniciar sesión proporci
 
 **Tipo:** Funcional  
 **Fuente:** Especificación de Terminales POS / KDS FMAT  
-**Verificación:** Prueba: Enviar solicitudes de inicio de sesión con identificador `XYYYYYY` válido y contraseña correcta, verificando que se autentique exitosamente al usuario asociado al restaurante correspondiente.  
+**Verificación:** Prueba: Enviar solicitudes de inicio de sesión con identificador `XYYYYYY` válido y contraseña correcta, verificando que se autentique exitosamente al usuario en el sistema.  
 **Estado:** Confirmado  
 **Reglas Relacionadas:** BR-AUTH-004, BR-AUTH-006, BR-AUTH-007, INV-AUTH-003  
 
@@ -174,11 +174,11 @@ El servicio Auth deberá proporcionar un endpoint para cambiar la contraseña te
 ### REQ-AUTH-012 — Emisión y Firma Digital de JSON Web Tokens (JWT)
 
 **Requisito:**
-El servicio Auth deberá firmar digitalmente cada Access Token mediante un algoritmo criptográfico seguro (`RS256` con par de llaves asimétricas o `HS256` con secreto de alta entropía), incluyendo en la carga útil las claims `sub`, `restaurantId`, `staffId`, `roles` y `mustChangePassword`.
+El servicio Auth deberá firmar digitalmente cada Access Token mediante un algoritmo criptográfico seguro (`RS256` con par de llaves asimétricas o `HS256` con secreto de alta entropía), incluyendo en la carga útil las claims `sub`, `staffId`, `roles` y `mustChangePassword`.
 
 **Tipo:** Funcional  
 **Fuente:** Estándar de Integración de Tokens RFC 7519  
-**Verificación:** Análisis: Decodificar y verificar la firma criptográfica de un token generado usando la clave pública correspondiente; verificar que ninguna claim obligatoria falte o sea nula.  
+**Verificación:** Análisis: Decodificar y verificar la firma criptográfica de un token generado usando la clave correspondiente; verificar que ninguna claim obligatoria falte o sea nula.  
 **Estado:** Confirmado  
 **Reglas Relacionadas:** BR-AUTH-013, INV-AUTH-006  
 
@@ -249,7 +249,7 @@ El servicio Auth deberá permitir al Administrador cambiar el estado operativo d
 ### REQ-AUTH-017 — Emisión de Eventos de Dominio en RabbitMQ
 
 **Requisito:**
-El servicio Auth deberá publicar eventos estructurados bajo especificación CloudEvents en el broker RabbitMQ ante la creación de personal (`StaffMemberCreated`), cambio de roles (`StaffRolesUpdated`) y cambio de estado (`StaffStatusChanged`), conteniendo el `restaurantId`, `staffId`, nombre y roles asociados.
+El servicio Auth deberá publicar eventos estructurados bajo especificación CloudEvents en el broker RabbitMQ ante la creación de personal (`StaffMemberCreated`), cambio de roles (`StaffRolesUpdated`) y cambio de estado (`StaffStatusChanged`), conteniendo el `staffId`, nombre y roles asociados (sin identificadores multi-tenant).
 
 **Tipo:** Funcional  
 **Fuente:** Integración Asíncrona de Ecosistema FMAT  
@@ -279,7 +279,7 @@ El API Gateway del sistema deberá interceptar cada petición HTTP entrante; si 
 ### REQ-AUTH-019 — Sanitización e Inyección de Cabeceras de Contexto en API Gateway
 
 **Requisito:**
-El API Gateway deberá eliminar cualquier cabecera `X-User-*` proveniente del cliente público antes de enrutar peticiones a la red interna de microservicios, e inyectar cabeceras autenticadas confiables (`X-User-Id`, `X-Restaurant-Id`, `X-Staff-Id`, `X-User-Roles`) extraídas del JWT verificado.
+El API Gateway deberá eliminar cualquier cabecera `X-User-*` proveniente del cliente público antes de enrutar peticiones a la red interna de microservicios, e inyectar cabeceras autenticadas confiables (`X-User-Id`, `X-Staff-Id`, `X-User-Roles`) extraídas del JWT verificado.
 
 **Tipo:** Funcional / Perimetral  
 **Fuente:** Prevención de Spoofing en Arquitecturas de Microservicios  
@@ -301,3 +301,33 @@ El servicio Auth deberá permitir al Administrador restablecer la contraseña de
 **Verificación:** Demostración: Desde la consola de administrador, ejecutar "Restablecer contraseña" sobre un empleado con contraseña activa; comprobar que su estado retorne a `TEMPORARY` y que sus sesiones activas se revoquen.  
 **Estado:** Confirmado  
 **Reglas Relacionadas:** BR-AUTH-007, BR-AUTH-008, INV-AUTH-005  
+
+---
+
+<a id="req-auth-021"></a>
+
+### REQ-AUTH-021 — Restricción de Actualización de Perfil por Tipo de Usuario
+
+**Requisito:**
+El servicio Auth deberá permitir únicamente a los usuarios con tipo `ADMIN` actualizar sus datos de perfil (nombre, apellido, email) mediante `PUT /api/v1/auth/profile`. Cualquier intento de actualización por parte de usuarios de tipo `STAFF` deberá ser rechazado con HTTP `403 Forbidden` (`FORBIDDEN_STAFF_PROFILE_UPDATE`), ya que los datos del personal operativo solo pueden ser gestionados administrativamente.
+
+**Tipo:** Funcional  
+**Fuente:** Regla de Negocio FMAT (BR-AUTH-016)  
+**Verificación:** Prueba: Intentar actualizar el perfil autenticado como `STAFF`; verificar respuesta HTTP 403. Autenticado como `ADMIN`, verificar actualización exitosa de perfil HTTP 200.  
+**Estado:** Confirmado  
+**Reglas Relacionadas:** BR-AUTH-016  
+
+---
+
+<a id="req-auth-022"></a>
+
+### REQ-AUTH-022 — Endpoint de Verificación de Salud del Servicio (`/health`)
+
+**Requisito:**
+El servicio Auth deberá exponer un endpoint público `GET /health` que informe el estado de operatividad del microservicio (status `ok`, timestamp, uptime) para monitorización y healthchecks de orquestación (Docker, Kubernetes).
+
+**Tipo:** No Funcional / Operacional  
+**Fuente:** Requisitos de Observabilidad FMAT  
+**Verificación:** Prueba: Realizar una petición `GET /health`; comprobar respuesta HTTP 200 con `{ status: "ok" }`.  
+**Estado:** Confirmado  
+**Reglas Relacionadas:** N/A  
