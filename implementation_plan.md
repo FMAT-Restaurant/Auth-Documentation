@@ -92,3 +92,5 @@ Se adopta la convención formalizada `^[A-Z][0-9]{6}$`:
 
 ## Verificación Formal V&V
 - Toda la documentación sigue el estándar de la materia de *Verificación y Validación* (UADY), clasificando los requisitos funcionales bajo los cuatro métodos: **Inspección**, **Demostración**, **Prueba** y **Análisis**.
+- La arquitectura opera como una instancia local *single-tenant* estilo Soft Restaurant con soporte híbrido de roles dinámicos y permisos granulares (PBAC).
+
