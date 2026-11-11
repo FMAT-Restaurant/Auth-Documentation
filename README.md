@@ -36,6 +36,7 @@ Auth-Documentation/
 │       ├── configuration.md              # Variables de entorno, topología de colas RabbitMQ y perfiles
 │       ├── traceability.md               # Matriz de trazabilidad (Requisitos, Reglas, Endpoints, Eventos, Pruebas)
 │       └── open.md                       # Decisiones consolidadas, supuestos y extensiones futuras
+├── PROMPT_INTEGRACION_EQUIPOS.md         # Prompt maestro de integración para los equipos (Module Federation + Kong + PBAC)
 └── README.md                             # Guía general de la especificación
 ```
 
@@ -45,6 +46,7 @@ Auth-Documentation/
 
 | Documento | Enlace | Resumen de Contenido |
 | :--- | :--- | :--- |
+| **00. Prompt de Integración para Equipos** | [PROMPT_INTEGRACION_EQUIPOS.md](PROMPT_INTEGRACION_EQUIPOS.md) | Prompt listo para copiar y pegar en agentes de IA para integrar Microfrontends, API Gateway Kong y catálogo oficial de permisos PBAC. |
 | **01. Contexto y Dominio** | [context.md](output/ers/context.md) | Bounded context, modelo de autorización PBAC, roles como etiquetas dinámicas organizacionales y catálogo de permisos. |
 | **02. Arquitectura y Componentes** | [architecture.md](output/ers/architecture.md) | Flujo perimetral API Gateway, esquema JWT con claims de permisos, topología RabbitMQ y modelo entidad-relación. |
 | **03. Reglas de Negocio e Invariantes** | [business-rules.md](output/ers/business-rules.md) | Reglas de asignación de permisos, invariantes formales de unicidad de ID `E000001`, obligatoriedad de permisos y control de contraseñas temporales. |
