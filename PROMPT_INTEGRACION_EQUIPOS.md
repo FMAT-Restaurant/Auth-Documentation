@@ -134,18 +134,19 @@ El Shell (`Auth-Frontend`) le pasa a `<App />` las siguientes props al montarlo,
      };
      ```
 
-3. **Catálogo Oficial de Permisos PBAC (¡USAR SIEMPRE DOS PUNTOS `:`, NUNCA PUNTOS `.`!):**
-   `Auth-Backend` emite **únicamente** estos códigos de permisos separados por **dos puntos (`:`)**. Revisa todo el Frontend y el Backend de este repositorio y reemplaza cualquier permiso con puntos (ej. `inventory.items.read`) o nombres distintos por los de esta tabla oficial:
+3. **Catálogo Oficial de Permisos PBAC y Roles de Sistema (¡USAR SIEMPRE DOS PUNTOS `:`, NUNCA PUNTOS `.`!):**
+   En `Auth-Backend`, **cada Rol de Sistema corresponde a 1 microservicio/dominio completo** (si el restaurante necesita un empleado híbrido con varios módulos, se le asignan varios roles o se crea un rol personalizado desde la UI de Auth).
+   Revisa todo el Frontend y el Backend de este repositorio y reemplaza cualquier permiso con puntos (ej. `inventory.items.read`) por **dos puntos (`:`)** según esta tabla:
 
-   | Módulo | Códigos Exactos de Permisos emitidos por Auth (`permissions`) | Roles por defecto |
-   | :--- | :--- | :--- |
-   | **Administrador** | `*` (Comodín de acceso total a todos los módulos y operaciones) | `ADMINISTRADOR` |
-   | **Sala / Host** | `sala:tables:view`, `sala:tables:assign_diner`, `sala:tables:assign_waiter`, `staff:view` | `HOST` (todos), `MESERO` (`sala:tables:view`) |
-   | **Menú** | `menu:view`, `menu:edit` | `MESERO` (`menu:view`), `ADMINISTRADOR` (`*`) |
-   | **Inventario** | `inventory:items:read`, `inventory:items:write`, `inventory:batches:read`, `inventory:batches:write`, `inventory:suppliers:read`, `inventory:suppliers:write`, `inventory:recipes:read`, `inventory:reservations:read`, `inventory:movements:read` | `ALMACENISTA` (los 9) |
-   | **Órdenes** | `orders:view`, `orders:create`, `orders:cancel` | `MESERO` (`orders:view`, `orders:create`), `CAJERO` (`orders:view`) |
-   | **Cocina (KDS)** | `kitchen:kds:view`, `kitchen:order:start_preparation`, `kitchen:order:mark_ready` | `CHEF_MASTER` (los 3) |
-   | **Caja / Pagos** | `billing:invoices:create`, `billing:reports:view` | `CAJERO` (los 2) |
+   | Módulo / Dominio | Rol de Sistema en Auth | Códigos Exactos de Permisos emitidos por Auth (`permissions`) | Estado |
+   | :--- | :--- | :--- | :--- |
+   | **Administrador** | `ADMINISTRADOR` | `*` (Comodín de acceso total a todos los módulos y operaciones) | Confirmado |
+   | **Inventario** | `ALMACENISTA` | `inventory:items:read`, `inventory:items:write`, `inventory:batches:read`, `inventory:batches:write`, `inventory:suppliers:read`, `inventory:suppliers:write`, `inventory:recipes:read`, `inventory:reservations:read`, `inventory:movements:read` | Confirmado con equipo Inventario |
+   | **Menú** | `GESTOR_MENU` | `menu:entries:view`, `menu:entries:manage`, `menu:categories:view`, `menu:categories:manage`, `menu:recipes:view`, `menu:recipes:manage`, `menu:offers:view`, `menu:offers:manage` | Confirmado con equipo Menú |
+   | **Sala / Host** | `HOST` | Base actuales: `sala:tables:view`, `sala:tables:assign_diner`, `sala:tables:assign_waiter` *(si definen otros, deben iniciar con `sala:` usando `:` y compartir la lista al equipo Auth)* | Por confirmar lista final con equipo Sala |
+   | **Órdenes (POS)** | `MESERO` | Base actuales: `orders:view`, `orders:create`, `orders:cancel` *(si definen otros, deben iniciar con `orders:` usando `:` y compartir la lista al equipo Auth)* | Por confirmar lista final con equipo Órdenes |
+   | **Cocina (KDS)** | `CHEF_MASTER` | Base actuales: `kitchen:kds:view`, `kitchen:order:start_preparation`, `kitchen:order:mark_ready` *(si definen otros, deben iniciar con `kitchen:` usando `:` y compartir la lista al equipo Auth)* | Por confirmar lista final con equipo Cocina |
+   | **Caja / Pagos** | `CAJERO` | Base actuales: `billing:invoices:create`, `billing:reports:view` *(si definen otros, deben iniciar con `billing:` usando `:` y compartir la lista al equipo Auth)* | Por confirmar lista final con equipo Caja |
 
 4. **Soporte de Modo Oscuro (`[data-theme="dark"]`):**
    El Shell aplica el atributo `data-theme="dark"` en `document.documentElement` (`<html data-theme="dark">`). Asegúrate de que tu `src/index.css` incluya la paleta oscura de FMAT-Restaurant:
