@@ -192,9 +192,9 @@ export const hasPermission = (user: ShellUser | undefined, requiredPermission: s
 Si este repositorio contiene código Backend, aplica estas reglas obligatorias:
 
 ### 2.1 Formato Estricto de Permisos: DOS PUNTOS (`:`), NUNCA PUNTOS (`.`)
-- **TODOS** los permisos emitidos por `Auth-Backend` usan **dos puntos (`:`)**.
-  - ✅ Correcto: `inventory:items:read`, `menu:entries:manage`, `orders:create`, `kitchen:kds:view`
-  - ❌ Incorrecto: `inventory.items.read`, `menu.entries.manage`, `orders.create`
+- **TODOS** los permisos emitidos por `Auth-Backend` usan **dos puntos (`:`)** bajo el esquema `modulo:recurso:accion`.
+  - ✅ Correcto: `inventory:items:read`, `menu:entries:manage`, `orders:orders:create`, `kitchen:queues:view`, `sala:tables:view`
+  - ❌ Incorrecto: `inventory.items.read`, `menu.entries.manage`, `orders.create`, `sala.tables.view`
 - Revisa decoradores (`@RequirePermissions`), guards, constantes y reemplaza cualquier punto (`.`) por dos puntos (`:`).
 
 ### 2.2 Bypass Obligatorio para Administrador (`*` y `ADMINISTRADOR`)
@@ -203,27 +203,89 @@ En **cualquier Guard o Middleware**, otorga acceso total de inmediato (`return t
 - `permissions.includes('*')`
 - `roles.includes('ADMINISTRADOR') || roles.includes('ADMIN')`
 
-### 2.3 Catálogo Oficial de Permisos PBAC
-Usa **únicamente** los siguientes códigos exactos:
+### 2.3 Catálogo Oficial de Permisos PBAC por Microservicio
+Usa **únicamente** los siguientes códigos exactos registrados en `Auth-Backend`:
 
-| Dominio | Rol de Sistema en Auth | Códigos Exactos de Permisos (`permissions`) |
-| :--- | :--- | :--- |
-| **Administrador** | `ADMINISTRADOR` | `*` (Acceso irrestricto) |
-| **Inventario** | `ALMACENISTA` | `inventory:items:read`, `inventory:items:write`, `inventory:batches:read`, `inventory:batches:write`, `inventory:suppliers:read`, `inventory:suppliers:write`, `inventory:recipes:read`, `inventory:reservations:read`, `inventory:movements:read` |
-| **Menú** | `GESTOR_MENU` | `menu:entries:view`, `menu:entries:manage`, `menu:categories:view`, `menu:categories:manage`, `menu:recipes:view`, `menu:recipes:manage`, `menu:offers:view`, `menu:offers:manage` |
-| **Sala / Host** | `HOST` | `sala:tables:view`, `sala:tables:assign_diner`, `sala:tables:assign_waiter` |
-| **Órdenes (POS)** | `MESERO` | `orders:view`, `orders:create`, `orders:cancel` |
-| **Cocina (KDS)** | `CHEF_MASTER` | `kitchen:kds:view`, `kitchen:order:start_preparation`, `kitchen:order:mark_ready` |
-| **Caja / Facturación**| `CAJERO` | `billing:invoices:create`, `billing:reports:view` |
+#### 1. Administrador General (`ADMINISTRADOR`)
+- Permiso: `*` (Acceso irrestricto a todos los endpoints, vistas y acciones de todos los microservicios).
 
-> *Nota:* Los roles de sistema no combinan microservicios. Si un puesto requiere operar en múltiples áreas (por ejemplo, un mesero que consulta el menú), se le asignan roles adicionales o un rol personalizado desde la interfaz de administración de Auth.
+#### 2. Inventario y Almacén (`inventory`) — Rol por defecto: `ALMACENISTA`
+- `inventory:items:read` — Ver insumos y existencias
+- `inventory:items:write` — Gestionar insumos (crear, editar, baja)
+- `inventory:batches:read` — Ver lotes y caducidades (FEFO)
+- `inventory:batches:write` — Gestionar lotes (entradas, ajustes, mermas)
+- `inventory:suppliers:read` — Ver proveedores
+- `inventory:suppliers:write` — Gestionar proveedores
+- `inventory:recipes:read` — Ver recetas, costos y disponibilidad
+- `inventory:reservations:read` — Ver reservas de stock por órdenes
+- `inventory:movements:read` — Ver bitácora de movimientos de almacén
+
+#### 3. Menú y Carta (`menu`) — Rol por defecto: `GESTOR_MENU`
+- `menu:entries:view` — Ver platillos, carta y precios
+- `menu:entries:manage` — Gestionar platillos (crear, editar, disponibilidad)
+- `menu:categories:view` — Ver categorías del menú
+- `menu:categories:manage` — Gestionar categorías (crear, editar, ordenar)
+- `menu:recipes:view` — Ver fichas técnicas y recetas vinculadas al menú
+- `menu:recipes:manage` — Gestionar recetas de platillos
+- `menu:offers:view` — Ver ofertas y promociones vigentes
+- `menu:offers:manage` — Gestionar ofertas y promociones
+
+#### 4. Sala y Mesas (`sala`) — Rol por defecto: `HOST`
+- `sala:tables:view` — Ver catálogo de mesas y plano en tiempo real
+- `sala:tables:occupy` — Sentar comensales e iniciar sesión de consumo
+- `sala:tables:update_status` — Registrar salida de comensales y fin de limpieza
+- `sala:tables:assign_waiter` — Asignar o reasignar mesero a mesa activa
+- `sala:assignments:view` — Ver asignaciones de meseros a mesas
+- `sala:table_unions:view` — Ver uniones de mesas
+- `sala:table_unions:create` — Unir mesas libres para grupos grandes
+- `sala:table_unions:release` — Disolver uniones de mesas
+- `sala:reservations:view` — Ver agenda de reservas y disponibilidad
+- `sala:reservations:create` — Registrar nueva reservación confirmada
+- `sala:reservations:update` — Reprogramar o modificar reservaciones
+- `sala:reservations:cancel` — Cancelar reservaciones
+- `sala:reservations:mark_no_show` — Registrar No-show tras expirar tolerancia
+- `sala:waitlist_entries:view` — Ver lista de espera presencial (FIFO)
+- `sala:waitlist_entries:create` — Registrar clientes en lista de espera
+- `sala:waitlist_entries:update_status` — Gestionar turnos en espera (sentar, cancelar)
+> *Permisos de administración física de sala (reservados para Administrador):*
+> - `sala:tables:create` — Crear nuevas mesas físicas
+> - `sala:tables:update` — Editar número, capacidad o zona de mesas
+> - `sala:tables:delete` — Dar de baja mesas físicas
+
+#### 5. Órdenes y Pedidos (`orders`) — Rol por defecto: `MESERO`
+- `orders:orders:view` — Consultar pedidos activos, historial y detalle
+- `orders:orders:create` — Abrir nueva comanda (mesa o para llevar)
+- `orders:orders:update` — Modificar comanda en borrador
+- `orders:orders:confirm` — Confirmar comanda a cocina y reservar stock
+- `orders:orders:cancel` — Cancelar comanda por cliente o desistimiento
+- `orders:orders:transfer` — Reasignar mesa o comensal a comanda en curso
+- `orders:items:redo` — Solicitar rehacer platillo a cocina por incidencia
+- `orders:orders:request_bill` — Solicitar cuenta a caja bloqueando adiciones
+> *Permiso de anulación especial (reservado para Administrador):*
+> - `orders:orders:void_admin` — Anulación administrativa de comandas en preparación (merma justificada)
+
+#### 6. Cocina y Pantalla KDS (`kitchen`) — Rol por defecto: `CHEF_MASTER`
+- `kitchen:queues:view` — Ver cola KDS de preparación y filtrar por estación
+- `kitchen:orders:start_preparation` — Iniciar preparación de comanda (consume stock)
+- `kitchen:items:ready` — Marcar platillo individual como listo (notifica al mesero)
+- `kitchen:orders:ready` — Marcar comanda completa lista para entrega
+- `kitchen:items:reject` — Rechazar platillo por falta física de ingredientes
+- `kitchen:items:cancel` — Cancelar platillo desde cocina antes de cocción
+- `kitchen:orders:void_error` — Anular comanda por desperfecto en cocina (sin cargo al cliente)
+- `orders:orders:view` — Consultar detalle de comanda para preparación
+
+#### 7. Caja y Facturación (`billing`) — Rol por defecto: `CAJERO`
+- `billing:invoices:create` — Emitir comprobantes y tickets de pago
+- `billing:reports:view` — Consultar arqueo y reportes de caja
+
+> **Regla de roles independientes**: Los roles de sistema no combinan microservicios. Si un empleado requiere operar en múltiples áreas (por ejemplo, un mesero que consulta el menú o el estado de mesas), se le asignan roles adicionales o se crea un rol personalizado desde la UI de Auth.
 
 ### 2.4 Headers Confiables Inyectados por Kong
 El API Gateway Kong (`http://localhost:8000`) valida la firma del JWT (`HS256`, `iss: "urn:fmat:restaurant:auth"`), limpia headers falsificados por clientes externos e inyecta los siguientes headers hacia tu backend:
 - `x-user-id`: UUID del usuario autenticado (`sub` del JWT).
 - `x-staff-id`: Matrícula del colaborador (ej. `ADM000001`, `M000003`, `G000001`).
 - `x-user-roles`: Cadena separada por comas (ej. `ADMINISTRADOR` o `MESERO`).
-- `x-user-permissions`: Cadena separada por comas usando dos puntos `:` (ej. `menu:entries:view,menu:entries:manage` o `*`).
+- `x-user-permissions`: Cadena separada por comas usando dos puntos `:` (ej. `orders:orders:view,orders:orders:create` o `*`).
 - `authorization`: `Bearer <accessToken>` (Kong también reenvía el JWT original).
 
 ### 2.5 Implementación del `PermissionsGuard` (Ejemplo NestJS / Express)
