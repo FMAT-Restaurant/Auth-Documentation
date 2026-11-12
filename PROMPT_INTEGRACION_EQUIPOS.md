@@ -14,7 +14,7 @@ Necesito que audites, configures y adaptes este repositorio para integrarse sin 
 1. Como un **Microfrontend Remoto (Remote)** consumido por el Shell principal (`Auth-Frontend`) usando `@originjs/vite-plugin-federation`.
 2. Como un **Backend seguro** detrás del **API Gateway (Kong)** consumiendo headers confiables y aplicando el catálogo PBAC de `Auth-Backend`.
 
-Primero, inspecciona este repositorio para identificar a cuál de los 5 módulos pertenece y usa **estrictamente** los valores de su fila en esta tabla oficial de contratos:
+Primero, inspecciona este repositorio para identificar a cuál de los 6 módulos pertenece y usa **estrictamente** los valores de su fila en esta tabla oficial de contratos:
 
 ### Matriz Maestra de Contratos por Microservicio
 
@@ -24,7 +24,7 @@ Primero, inspecciona este repositorio para identificar a cuál de los 5 módulos
 | **Menú** | `menuApp` | `5173` | `/api/v1/menu` | `false` (recibe `/api/v1/menu/...`) | `8080` | `GESTOR_MENU` |
 | **Inventario** | `inventarioApp` | `5176` | `/api/v1/inventory` | `true` (recibe `/items`, `/batches`, etc.) | `8083` | `ALMACENISTA` |
 | **Órdenes (POS)** | `ordenesApp` | `5177` | `/api/v1/orders` | `false` (recibe `/api/v1/orders/...`) | `8082` | `MESERO` |
-| **Cocina (KDS)** | `ordenesApp` | `5177` | `/api/v1/orders` | `false` (recibe `/api/v1/orders/...`) | `8082` | `CHEF_MASTER` |
+| **Cocina (KDS)** | `cocinaApp` | `5179` | `/api/v1/kitchen` (o `/api/v1/orders/kds`) | `false` (recibe `/api/v1/kitchen/...`) | `8086` | `CHEF_MASTER` |
 | **Caja y Facturación** | `cajaApp` | `5178` | `/api/v1/payments` | `false` (recibe `/api/v1/payments/...`) | `8084` | `CAJERO` |
 
 ---
@@ -56,7 +56,7 @@ export default defineConfig({
   plugins: [
     react(),
     federation({
-      name: '<NAME_SEGUN_MATRIZ>', // ej. 'menuApp', 'inventarioApp', 'salaApp', 'ordenesApp', 'cajaApp'
+      name: '<NAME_SEGUN_MATRIZ>', // ej. 'menuApp', 'inventarioApp', 'salaApp', 'ordenesApp', 'cocinaApp', 'cajaApp'
       filename: 'remoteEntry.js',
       exposes: {
         './App': './src/App.tsx', // Debe tener export default del componente raíz
