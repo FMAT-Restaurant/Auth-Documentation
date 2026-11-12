@@ -1,169 +1,166 @@
-# Prompt de Integración para Equipos (Microfrontends + API Gateway + PBAC)
+# Prompt de Integración Oficial para Equipos (Microfrontends + API Gateway + PBAC)
 
-Copia y pega el siguiente bloque en el agente de IA de tu equipo (Cursor, Antigravity, Claude Code, Copilot, etc.) dentro del repositorio de tu microservicio:
+Copia y pega el siguiente bloque directamente en el agente de IA de tu equipo (Cursor, Antigravity, Claude Code, Copilot, Windsurf, etc.) dentro del repositorio de tu microservicio (**Frontend** y/o **Backend**):
 
 ---
 
-## Prompt para el Agente de IA de cada equipo
+## Prompt Maestro para el Agente de IA
 
 ````markdown
-Actúa como un ingeniero experto en React, TypeScript, Vite, Node/NestJS y arquitecturas de Microfrontends y Microservicios.
-Necesito que configures y adaptes este repositorio para conectarse como un **Microfrontend Remoto (Remote)** dentro del **Shell principal (`Auth-Frontend`)** del proyecto **FMAT-Restaurant** usando `@originjs/vite-plugin-federation`, además de alinear las llamadas HTTP y los permisos PBAC con el **API Gateway (Kong)** y **`Auth-Backend`**.
+# PROMPT PARA AGENTE IA: Integración Oficial con Auth Shell (Module Federation) y API Gateway Kong (PBAC)
 
-Primero, inspecciona este repositorio para identificar a cuál de los 5 módulos pertenece y usa **estrictamente** los valores de su fila en esta tabla oficial de contratos del Shell:
+Actúa como un Ingeniero de Software Senior experto en TypeScript, React 18, Vite, Node/NestJS y arquitecturas de Microfrontends y Microservicios.
+Necesito que audites, configures y adaptes este repositorio para integrarse sin errores al ecosistema **FMAT-Restaurant**:
+1. Como un **Microfrontend Remoto (Remote)** consumido por el Shell principal (`Auth-Frontend`) usando `@originjs/vite-plugin-federation`.
+2. Como un **Backend seguro** detrás del **API Gateway (Kong)** consumiendo headers confiables y aplicando el catálogo PBAC de `Auth-Backend`.
 
-| Módulo | `name` en Federation | Puerto Frontend (`server` y `preview`) | Ruta en API Gateway (`http://localhost:8000`) | `strip_path` en Kong | Puerto interno Backend |
-| :--- | :--- | :--- | :--- | :--- | :--- |
-| **Sala / Host** | `salaApp` | `5174` | `/api/v1/floor` | `false` (recibe `/api/v1/floor/...`) | `8085` |
-| **Menú** | `menuApp` | `5173` (o `5175`) | `/api/v1/menu` | `false` (recibe `/api/v1/menu/...`) | `8080` |
-| **Inventario** | `inventarioApp` | `5176` | `/api/v1/inventory` | `true` (recibe `/items`, `/batches`, etc.) | `8083` |
-| **Órdenes y Cocina (KDS)** | `ordenesApp` | `5177` | `/api/v1/orders` | `false` (recibe `/api/v1/orders/...`) | `8082` |
-| **Caja y Facturación** | `cajaApp` | `5178` | `/api/v1/payments` | `false` (recibe `/api/v1/payments/...`) | `8084` |
+Primero, inspecciona este repositorio para identificar a cuál de los 5 módulos pertenece y usa **estrictamente** los valores de su fila en esta tabla oficial de contratos:
 
-Realiza los siguientes cambios en el repositorio:
+### Matriz Maestra de Contratos por Microservicio
 
-### 1. Instalar y configurar Module Federation en el Frontend
-1. **Alinear la versión de React con el Shell:**
-   El Shell (`Auth-Frontend`) utiliza **React 18** (`^18.3.1`). Como Module Federation comparte la misma instancia en memoria (`shared: ['react', 'react-dom']`), es requisito obligatorio que todos los microfrontends utilicen React 18 (si usan React 19, React 18 no reconoce sus elementos y arroja error de `Objects are not valid as a React child`):
-   ```bash
-   npm install react@^18.3.1 react-dom@^18.3.1
-   npm install -D @types/react@^18.3.18 @types/react-dom@^18.3.5
-   ```
-2. Instala el plugin de federación en las dependencias de desarrollo:
-   ```bash
-   npm install -D @originjs/vite-plugin-federation
-   ```
-3. Actualiza `vite.config.ts` para exponer el componente raíz como `./App` en el archivo `remoteEntry.js` y fijar el puerto asignado tanto en `server` como en `preview` con `cors: true` y `host: true`:
-   ```ts
-   import { defineConfig } from 'vite';
-   import react from '@vitejs/plugin-react';
-   import federation from '@originjs/vite-plugin-federation';
-
-   export default defineConfig({
-     plugins: [
-       react(),
-       federation({
-         name: '<NAME_SEGUN_TABLA>', // ej. 'menuApp', 'inventarioApp', 'salaApp', 'ordenesApp', 'cajaApp'
-         filename: 'remoteEntry.js',
-         exposes: {
-           './App': './src/App.tsx',
-         },
-         shared: ['react', 'react-dom'],
-       }),
-     ],
-     server: {
-       port: <PUERTO_SEGUN_TABLA>,
-       strictPort: true,
-       cors: true,
-       host: true,
-     },
-     preview: {
-       port: <PUERTO_SEGUN_TABLA>,
-       strictPort: true,
-       cors: true,
-       host: true,
-     },
-     build: {
-       target: 'esnext',
-       minify: false,
-       cssCodeSplit: false,
-     },
-   });
-   ```
-   > **Nota crítica:** El Shell (`Auth-Frontend`) importa el módulo desde `http://<IP>:<PUERTO>/assets/remoteEntry.js` y monta el `export default` de `./src/App.tsx`. Asegúrate de que `src/App.tsx` tenga `export default App`.
-
-4. En `package.json`, agrega o actualiza los scripts para levantar el microfrontend en modo federado exponiéndolo en red (`--host`), ya que `@originjs/vite-plugin-federation` **solo genera `assets/remoteEntry.js` al compilar (`vite build`), NO con `vite dev`**:
-   ```json
-   "scripts": {
-     "dev:federation": "vite build && vite preview --port <PUERTO_SEGUN_TABLA> --host",
-     "preview": "vite preview --port <PUERTO_SEGUN_TABLA> --host"
-   }
-   ```
-   > **Si usan Docker / Nginx para el Frontend:** Cada vez que cambien código deben reconstruir con `docker compose build --no-cache && docker compose up -d`, asegurarse de incluir `add_header Access-Control-Allow-Origin *;` en `nginx.conf`, y verificar con `curl -I http://localhost:<PUERTO>/assets/remoteEntry.js` que devuelva `Content-Type: application/javascript` (si devuelve `text/html` aunque sea `200 OK`, es el fallback de Nginx y el archivo no se compiló).
+| Módulo / Dominio | `name` en Federation | Puerto Frontend (`server` y `preview`) | Ruta en API Gateway (`http://localhost:8000`) | `strip_path` en Kong | Puerto interno Backend | Rol de Sistema en Auth |
+| :--- | :--- | :---: | :--- | :---: | :---: | :--- |
+| **Sala / Host** | `salaApp` | `5174` | `/api/v1/floor` | `false` (recibe `/api/v1/floor/...`) | `8085` | `HOST` |
+| **Menú** | `menuApp` | `5173` | `/api/v1/menu` | `false` (recibe `/api/v1/menu/...`) | `8080` | `GESTOR_MENU` |
+| **Inventario** | `inventarioApp` | `5176` | `/api/v1/inventory` | `true` (recibe `/items`, `/batches`, etc.) | `8083` | `ALMACENISTA` |
+| **Órdenes (POS)** | `ordenesApp` | `5177` | `/api/v1/orders` | `false` (recibe `/api/v1/orders/...`) | `8082` | `MESERO` |
+| **Cocina (KDS)** | `ordenesApp` | `5177` | `/api/v1/orders` | `false` (recibe `/api/v1/orders/...`) | `8082` | `CHEF_MASTER` |
+| **Caja y Facturación** | `cajaApp` | `5178` | `/api/v1/payments` | `false` (recibe `/api/v1/payments/...`) | `8084` | `CAJERO` |
 
 ---
 
-### 2. Recibir la Sesión, Usuario, Permisos PBAC Exactos y Tema desde el Shell
-El Shell (`Auth-Frontend`) le pasa a `<App />` las siguientes props al montarlo, y además guarda la sesión en `localStorage` bajo la clave `'fmat_restaurant_auth_session'` (que es compartida cuando se ejecuta dentro del Shell):
+## 1. CONTRATO DE FRONTEND (VITE MODULE FEDERATION)
 
-1. Define la interfaz de props en `src/App.tsx` (o en un archivo de tipos):
-   ```ts
-   export interface ShellUser {
-     id: string;
-     userType: 'ADMIN' | 'STAFF';
-     staffId?: string;
-     email?: string;
-     displayName: string;
-     roleLabel?: string;
-     roles?: string[];      // Ej: ['ADMINISTRADOR'] o ['MESERO', 'HOST']
-     permissions: string[]; // Ej: ['*'] para ADMIN, o permisos con ':'
-   }
+Si este repositorio contiene código Frontend, realiza las siguientes adecuaciones:
 
-   export interface FederatedModuleProps {
-     token?: string;
-     currentUser?: ShellUser;
-     theme?: 'light' | 'dark';
-   }
-   ```
-2. Haz que `App` acepte `FederatedModuleProps` y tenga un fallback automático a `localStorage.getItem('fmat_restaurant_auth_session')` por si no recibe props o se recarga:
-   ```tsx
-   const getStoredSession = (): { accessToken?: string; user?: ShellUser } | null => {
-     try {
-       const raw = localStorage.getItem('fmat_restaurant_auth_session');
-       return raw ? JSON.parse(raw) : null;
-     } catch {
-       return null;
-     }
-   };
-   ```
-   - El token efectivo será `const activeToken = token ?? getStoredSession()?.accessToken;`
-   - El usuario efectivo será `const activeUser = currentUser ?? getStoredSession()?.user;`
-   - Para verificar si el usuario tiene un permiso en la UI, crea o actualiza este helper (debe permitir acceso total a `ADMIN`, rol `ADMINISTRADOR` o comodín `*`):
-     ```ts
-     export const hasPermission = (user: ShellUser | undefined, requiredPermission: string): boolean => {
-       if (!user) return false;
-       if (
-         user.userType === 'ADMIN' ||
-         user.roles?.includes('ADMINISTRADOR') ||
-         user.roles?.includes('ADMIN') ||
-         user.permissions?.includes('*')
-       ) {
-         return true;
-       }
-       return Boolean(user.permissions?.includes(requiredPermission));
-     };
-     ```
+### 1.1 Requisito Crítico: Usar React 18 (¡NO React 19!)
+El Shell (`Auth-Frontend`) corre en **React 18** (`^18.3.1`). Como Module Federation comparte la instancia de React en memoria (`shared: ['react', 'react-dom']`), si este microfrontend usa React 19 romperá el Shell con el error: `Objects are not valid as a React child`.
+Asegura que `package.json` tenga:
+```bash
+npm install react@^18.3.1 react-dom@^18.3.1
+npm install -D @types/react@^18.3.18 @types/react-dom@^18.3.5
+```
 
-3. **Catálogo Oficial de Permisos PBAC y Roles de Sistema (¡USAR SIEMPRE DOS PUNTOS `:`, NUNCA PUNTOS `.`!):**
-   En `Auth-Backend`, **cada Rol de Sistema corresponde a 1 microservicio/dominio completo** (si el restaurante necesita un empleado híbrido con varios módulos, se le asignan varios roles o se crea un rol personalizado desde la UI de Auth).
-   Revisa todo el Frontend y el Backend de este repositorio y reemplaza cualquier permiso con puntos (ej. `inventory.items.read`) por **dos puntos (`:`)** según esta tabla:
+### 1.2 Configuración en `vite.config.ts`
+Instala `@originjs/vite-plugin-federation`:
+```bash
+npm install -D @originjs/vite-plugin-federation
+```
+Configura `vite.config.ts` para exponer `./App` en `assets/remoteEntry.js` con el puerto asignado en la Matriz Maestra y escucha en `0.0.0.0`:
+```typescript
+import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
+import federation from '@originjs/vite-plugin-federation';
 
-   | Módulo / Dominio | Rol de Sistema en Auth | Códigos Exactos de Permisos emitidos por Auth (`permissions`) | Estado |
-   | :--- | :--- | :--- | :--- |
-   | **Administrador** | `ADMINISTRADOR` | `*` (Comodín de acceso total a todos los módulos y operaciones) | Confirmado |
-   | **Inventario** | `ALMACENISTA` | `inventory:items:read`, `inventory:items:write`, `inventory:batches:read`, `inventory:batches:write`, `inventory:suppliers:read`, `inventory:suppliers:write`, `inventory:recipes:read`, `inventory:reservations:read`, `inventory:movements:read` | Confirmado con equipo Inventario |
-   | **Menú** | `GESTOR_MENU` | `menu:entries:view`, `menu:entries:manage`, `menu:categories:view`, `menu:categories:manage`, `menu:recipes:view`, `menu:recipes:manage`, `menu:offers:view`, `menu:offers:manage` | Confirmado con equipo Menú |
-   | **Sala / Host** | `HOST` | Base actuales: `sala:tables:view`, `sala:tables:assign_diner`, `sala:tables:assign_waiter` *(si definen otros, deben iniciar con `sala:` usando `:` y compartir la lista al equipo Auth)* | Por confirmar lista final con equipo Sala |
-   | **Órdenes (POS)** | `MESERO` | Base actuales: `orders:view`, `orders:create`, `orders:cancel` *(si definen otros, deben iniciar con `orders:` usando `:` y compartir la lista al equipo Auth)* | Por confirmar lista final con equipo Órdenes |
-   | **Cocina (KDS)** | `CHEF_MASTER` | Base actuales: `kitchen:kds:view`, `kitchen:order:start_preparation`, `kitchen:order:mark_ready` *(si definen otros, deben iniciar con `kitchen:` usando `:` y compartir la lista al equipo Auth)* | Por confirmar lista final con equipo Cocina |
-   | **Caja / Pagos** | `CAJERO` | Base actuales: `billing:invoices:create`, `billing:reports:view` *(si definen otros, deben iniciar con `billing:` usando `:` y compartir la lista al equipo Auth)* | Por confirmar lista final con equipo Caja |
+export default defineConfig({
+  plugins: [
+    react(),
+    federation({
+      name: '<NAME_SEGUN_MATRIZ>', // ej. 'menuApp', 'inventarioApp', 'salaApp', 'ordenesApp', 'cajaApp'
+      filename: 'remoteEntry.js',
+      exposes: {
+        './App': './src/App.tsx', // Debe tener export default del componente raíz
+      },
+      shared: ['react', 'react-dom'],
+    }),
+  ],
+  server: {
+    port: <PUERTO_SEGUN_MATRIZ>,
+    strictPort: true,
+    cors: true,
+    host: '0.0.0.0',
+  },
+  preview: {
+    port: <PUERTO_SEGUN_MATRIZ>,
+    strictPort: true,
+    cors: true,
+    host: '0.0.0.0',
+  },
+  build: {
+    target: 'esnext',
+    minify: false,
+    cssCodeSplit: false,
+  },
+});
+```
+> **Nota obligatoria:** `./src/App.tsx` DEBE tener `export default App`.
 
-4. **Soporte de Modo Oscuro (`[data-theme="dark"]`):**
-   El Shell aplica el atributo `data-theme="dark"` en `document.documentElement` (`<html data-theme="dark">`). Asegúrate de que tu `src/index.css` incluya la paleta oscura de FMAT-Restaurant:
+### 1.3 Props de Sesión y Fallback a `localStorage`
+El Shell monta tu `<App />` pasándole props de usuario y token. Además, guarda la sesión activa en `localStorage` bajo `'fmat_restaurant_auth_session'`.
+Declara los tipos y el soporte en `./src/App.tsx`:
+
+```typescript
+export interface ShellUser {
+  id: string;
+  userType: 'ADMIN' | 'STAFF';
+  staffId?: string;
+  email?: string;
+  displayName?: string;
+  firstName?: string;
+  lastName?: string;
+  roles?: string[];      // ej. ['ADMINISTRADOR'] o ['MESERO']
+  permissions: string[]; // ej. ['*'] o ['menu:entries:view']
+}
+
+export interface FederatedModuleProps {
+  token?: string;
+  currentUser?: ShellUser;
+  theme?: 'light' | 'dark';
+}
+```
+
+Implementa la extracción del token y usuario activo:
+```tsx
+const getStoredSession = (): { accessToken?: string; user?: ShellUser } | null => {
+  try {
+    const raw = localStorage.getItem('fmat_restaurant_auth_session');
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+};
+
+export default function App({ token, currentUser, theme }: FederatedModuleProps) {
+  const activeToken = token ?? getStoredSession()?.accessToken;
+  const activeUser = currentUser ?? getStoredSession()?.user;
+
+  // Usa activeToken en todas tus peticiones HTTP hacia el API Gateway (Kong):
+  // headers: { Authorization: `Bearer ${activeToken}` }
+  // ...
+}
+```
+
+### 1.4 Helper de Permisos en la UI (`hasPermission`)
+Usa esta función para proteger botones, menús o vistas. Otorga acceso total inmediato a `ADMIN`, `ADMINISTRADOR` o `*`:
+```typescript
+export const hasPermission = (user: ShellUser | undefined, requiredPermission: string): boolean => {
+  if (!user) return false;
+  if (
+    user.userType === 'ADMIN' ||
+    user.roles?.includes('ADMINISTRADOR') ||
+    user.roles?.includes('ADMIN') ||
+    user.permissions?.includes('*')
+  ) {
+    return true;
+  }
+  return Boolean(user.permissions?.includes(requiredPermission));
+};
+```
+
+### 1.5 Soporte de Tema Oscuro y Layout del Shell
+1. **Modo Oscuro:** El Shell conmuta el atributo `<html data-theme="dark">`. Agrega en tu `src/index.css`:
    ```css
    [data-theme="dark"] {
      --color-primary: #E06A3B;
      --color-primary-hover: #F07C48;
      --color-accent: #FB923C;
      --color-primary-soft: rgba(224, 106, 59, 0.16);
-
      --color-ink: #FFFFFF;
      --color-text: #E8E3DF;
      --color-muted: #9C9288;
      --color-border: #2C2420;
      --color-canvas: #0A0908;
      --color-surface: #161311;
-
      --color-success: #22C55E;
      --bg-success: rgba(34, 197, 94, 0.15);
      --color-warning: #F59E0B;
@@ -172,29 +169,126 @@ El Shell (`Auth-Frontend`) le pasa a `<App />` las siguientes props al montarlo,
      --bg-danger: rgba(239, 68, 68, 0.15);
    }
    ```
-5. **Evitar duplicar el Sidebar principal:** El Shell ya provee el Sidebar lateral de navegación entre microservicios y el header móvil. Si este frontend tenía un Sidebar global de todo el restaurante o barra de login propia, ocúltalo cuando se monte desde el Shell para renderizar únicamente el contenido del módulo.
+2. **Evitar Sidebars Duplicados:** El Shell ya cuenta con Sidebar de navegación global y header. Si tu frontend tiene un sidebar propio de todo el restaurante o pantalla de login, ocúltalo cuando esté montado en modo federado.
+
+### 1.6 ¡Advertencia Crítica de Ejecución con Vite y Nginx!
+1. **`vite dev` NO expone `remoteEntry.js`:**
+   `@originjs/vite-plugin-federation` solo genera el bundle remoto al compilar. En `package.json` define:
+   ```json
+   "scripts": {
+     "dev:federation": "vite build && vite preview --port <PUERTO_SEGUN_MATRIZ> --host 0.0.0.0",
+     "preview": "vite preview --port <PUERTO_SEGUN_MATRIZ> --host 0.0.0.0"
+   }
+   ```
+2. **Si usas Docker con Nginx:**
+   - Reconstruye sin caché ante cualquier cambio: `docker compose build --no-cache && docker compose up -d`.
+   - Asegura encabezados CORS en `nginx.conf`: `add_header Access-Control-Allow-Origin *;`.
+   - **Prueba obligatoria:** Ejecuta `curl -I http://localhost:<PUERTO>/assets/remoteEntry.js`. El header `Content-Type` **DEBE** ser `application/javascript`. Si devuelve `text/html` (aunque sea `200 OK`), Nginx está cayendo en el fallback de `index.html` porque el build falló o la ruta no existe.
 
 ---
 
-### 3. Conectar el Frontend y Backend con el API Gateway (Kong)
-1. **En el Frontend (servicios HTTP / `fetch` / `axios`):**
-   - Usa la variable de entorno `VITE_API_URL` con fallback al API Gateway: `http://localhost:8000<RUTA_SEGUN_TABLA>` (ej. `http://localhost:8000/api/v1/menu`).
-   - En todas las peticiones incluye siempre el header:
-     ```ts
-     Authorization: `Bearer ${activeToken}`
-     ```
-2. **En el Backend (Guards / Middlewares de Autenticación y Permisos):**
-   - El API Gateway (Kong + plugin `auth-perimeter`) ya valida la firma del JWT (`HS256`, `iss: "urn:fmat:restaurant:auth"`), bloquea contraseñas temporales y reenvía la petición al backend inyectando exactamente estos **headers HTTP**:
-     - `x-user-id`: UUID del usuario autenticado (`sub` del JWT)
-     - `x-staff-id`: Matrícula operativa del usuario (ej. `ADM000001`, `M000003`, `O000006`)
-     - `x-user-roles`: Roles separados por comas (ej. `ADMINISTRADOR` o `MESERO,HOST`)
-     - `x-user-permissions`: Permisos separados por comas usando **dos puntos `:`** (ej. `menu:view,menu:edit` o `*` para el Administrador)
-     - `authorization`: `Bearer <accessToken>` (Kong también reenvía el JWT original)
-   - **Regla crítica en el `PermissionsGuard` / Middleware del Backend:**
-     1. Lee `x-user-permissions` y `x-user-roles` separándolos por comas (`.split(',').map(s => s.trim())`), o extráelos del payload del Bearer JWT como fallback.
-     2. **Bypass obligatorio de Admin:** Si `permissions.includes('*')` o `roles.includes('ADMINISTRADOR')` o `roles.includes('ADMIN')`, **permite el acceso inmediatamente (`return true`)** sin rechazar con `403`.
-     3. Asegúrate de que todos los decoradores/rutas del backend validen los permisos usando **dos puntos (`:`)** según la tabla de la Sección 2.3 (nunca puntos `.`).
-   - Asegúrate de que el Backend escuche en `0.0.0.0` en el puerto interno indicado en la tabla y tenga CORS habilitado.
+## 2. CONTRATO DE BACKEND (API GATEWAY KONG + PBAC)
 
-Por favor, aplica todos estos cambios, verifica que `npm run build` genere correctamente `dist/assets/remoteEntry.js` sin errores de TypeScript, y muéstrame un resumen de los archivos modificados.
+Si este repositorio contiene código Backend, aplica estas reglas obligatorias:
+
+### 2.1 Formato Estricto de Permisos: DOS PUNTOS (`:`), NUNCA PUNTOS (`.`)
+- **TODOS** los permisos emitidos por `Auth-Backend` usan **dos puntos (`:`)**.
+  - ✅ Correcto: `inventory:items:read`, `menu:entries:manage`, `orders:create`, `kitchen:kds:view`
+  - ❌ Incorrecto: `inventory.items.read`, `menu.entries.manage`, `orders.create`
+- Revisa decoradores (`@RequirePermissions`), guards, constantes y reemplaza cualquier punto (`.`) por dos puntos (`:`).
+
+### 2.2 Bypass Obligatorio para Administrador (`*` y `ADMINISTRADOR`)
+El Administrador del restaurante (`ADM000001`) tiene rol `ADMINISTRADOR` y permisos `["*"]`.
+En **cualquier Guard o Middleware**, otorga acceso total de inmediato (`return true`) si:
+- `permissions.includes('*')`
+- `roles.includes('ADMINISTRADOR') || roles.includes('ADMIN')`
+
+### 2.3 Catálogo Oficial de Permisos PBAC
+Usa **únicamente** los siguientes códigos exactos:
+
+| Dominio | Rol de Sistema en Auth | Códigos Exactos de Permisos (`permissions`) |
+| :--- | :--- | :--- |
+| **Administrador** | `ADMINISTRADOR` | `*` (Acceso irrestricto) |
+| **Inventario** | `ALMACENISTA` | `inventory:items:read`, `inventory:items:write`, `inventory:batches:read`, `inventory:batches:write`, `inventory:suppliers:read`, `inventory:suppliers:write`, `inventory:recipes:read`, `inventory:reservations:read`, `inventory:movements:read` |
+| **Menú** | `GESTOR_MENU` | `menu:entries:view`, `menu:entries:manage`, `menu:categories:view`, `menu:categories:manage`, `menu:recipes:view`, `menu:recipes:manage`, `menu:offers:view`, `menu:offers:manage` |
+| **Sala / Host** | `HOST` | `sala:tables:view`, `sala:tables:assign_diner`, `sala:tables:assign_waiter` |
+| **Órdenes (POS)** | `MESERO` | `orders:view`, `orders:create`, `orders:cancel` |
+| **Cocina (KDS)** | `CHEF_MASTER` | `kitchen:kds:view`, `kitchen:order:start_preparation`, `kitchen:order:mark_ready` |
+| **Caja / Facturación**| `CAJERO` | `billing:invoices:create`, `billing:reports:view` |
+
+> *Nota:* Los roles de sistema no combinan microservicios. Si un puesto requiere operar en múltiples áreas (por ejemplo, un mesero que consulta el menú), se le asignan roles adicionales o un rol personalizado desde la interfaz de administración de Auth.
+
+### 2.4 Headers Confiables Inyectados por Kong
+El API Gateway Kong (`http://localhost:8000`) valida la firma del JWT (`HS256`, `iss: "urn:fmat:restaurant:auth"`), limpia headers falsificados por clientes externos e inyecta los siguientes headers hacia tu backend:
+- `x-user-id`: UUID del usuario autenticado (`sub` del JWT).
+- `x-staff-id`: Matrícula del colaborador (ej. `ADM000001`, `M000003`, `G000001`).
+- `x-user-roles`: Cadena separada por comas (ej. `ADMINISTRADOR` o `MESERO`).
+- `x-user-permissions`: Cadena separada por comas usando dos puntos `:` (ej. `menu:entries:view,menu:entries:manage` o `*`).
+- `authorization`: `Bearer <accessToken>` (Kong también reenvía el JWT original).
+
+### 2.5 Implementación del `PermissionsGuard` (Ejemplo NestJS / Express)
+```typescript
+import { Injectable, CanActivate, ExecutionContext, ForbiddenException } from '@nestjs/common';
+import { Reflector } from '@nestjs/core';
+
+@Injectable()
+export class PermissionsGuard implements CanActivate {
+  constructor(private reflector: Reflector) {}
+
+  canActivate(context: ExecutionContext): boolean {
+    const requiredPermissions = this.reflector.get<string[]>('permissions', context.getHandler());
+    if (!requiredPermissions || requiredPermissions.length === 0) {
+      return true;
+    }
+
+    const req = context.switchToHttp().getRequest();
+    const rawRoles = (req.headers['x-user-roles'] as string) || '';
+    const rawPermissions = (req.headers['x-user-permissions'] as string) || '';
+
+    const roles: string[] = rawRoles
+      ? rawRoles.split(',').map((r) => r.trim()).filter(Boolean)
+      : (req.user?.roles ?? []);
+
+    const permissions: string[] = rawPermissions
+      ? rawPermissions.split(',').map((p) => p.trim()).filter(Boolean)
+      : (req.user?.permissions ?? []);
+
+    // 1. Bypass obligatorio para Administrador / Wildcard:
+    if (
+      permissions.includes('*') ||
+      roles.includes('ADMINISTRADOR') ||
+      roles.includes('ADMIN')
+    ) {
+      return true;
+    }
+
+    // 2. Validación de permisos requeridos (usando dos puntos ':'):
+    const hasRequired = requiredPermissions.every((perm) => permissions.includes(perm));
+    if (!hasRequired) {
+      throw new ForbiddenException('No cuentas con los permisos necesarios para realizar esta acción');
+    }
+
+    return true;
+  }
+}
+```
+
+### 2.6 Red, CORS y Rutas
+- Tu backend DEBE escuchar en host `0.0.0.0` en el puerto interno asignado en la Matriz Maestra.
+- Habilita CORS para aceptar peticiones reenviadas.
+- Verifica el comportamiento de `strip_path`:
+  - En **Inventario** (`strip_path: true`), Kong recibe `/api/v1/inventory/items` y envía `/items` al backend.
+  - En los demás (`strip_path: false`), Kong envía la ruta completa con el prefijo `/api/v1/...`.
+
+---
+
+## 3. CHECKLIST FINAL DE VERIFICACIÓN PARA EL AGENTE DE IA
+Antes de reportar tu trabajo como completado, valida uno a uno los siguientes puntos:
+1. [ ] **Permisos:** Todos los decoradores, guards y helpers usan **dos puntos (`:`)** y coinciden con la tabla de PBAC.
+2. [ ] **Bypass Admin:** Los endpoints y vistas permiten acceso total si `permissions.includes('*')` o `roles.includes('ADMINISTRADOR')`.
+3. [ ] **Frontend:** Si aplica, `react` y `react-dom` están en `^18.3.1`.
+4. [ ] **Federation:** `vite.config.ts` expone `./App` con el nombre y puerto exactos de la Matriz Maestra y host `0.0.0.0`.
+5. [ ] **Build:** `npm run build` compila limpiamente sin errores de TypeScript y genera `remoteEntry.js`.
+6. [ ] **Backend:** Escucha en `0.0.0.0`, tiene CORS habilitado y lee los headers `x-user-permissions` / `x-user-roles` inyectados por Kong.
+7. [ ] **Consumo API:** El Frontend apunta al API Gateway en `http://localhost:8000` con `Authorization: Bearer <token>`.
 ````
