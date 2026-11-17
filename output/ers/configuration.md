@@ -9,12 +9,10 @@ El servicio **Auth** se configura de manera desacoplada mediante variables de en
 | `NODE_ENV` / `APP_ENV` | String | Sí | `development` | Entorno de ejecución (`development`, `test`, `production`). |
 | `PORT` | Integer | No | `4000` | Puerto TCP de escucha para la API de Auth. |
 | `DATABASE_URL` | String | Sí | — | Cadena de conexión JDBC/PostgreSQL (`postgres://user:pass@host:5432/fmat_auth`). |
-| `JWT_ALGORITHM` | String | No | `RS256` | Algoritmo de firma digital (`RS256` o `HS256`). |
-| `JWT_PRIVATE_KEY_PATH` | String | Condicional | `./certs/jwt-private.pem` | Ruta al archivo con la llave privada RSA para firmar JWTs (si `RS256`). |
-| `JWT_PUBLIC_KEY_PATH` | String | Condicional | `./certs/jwt-public.pem` | Ruta a la llave pública RSA para validar tokens emitidos. |
-| `JWT_SECRET` | String | Condicional | — | Secreto simétrico de alta entropía (si `HS256`). |
-| `JWT_ACCESS_TOKEN_TTL` | String | No | `3600s` | Tiempo de vida del Access Token (ej. `1h` o `3600s`). |
-| `JWT_REFRESH_TOKEN_TTL`| String | No | `14d` | Tiempo de vida del Refresh Token (ej. `14d`). |
+| `JWT_ALGORITHM` | String | No | `HS256` | Algoritmo de firma digital (`HS256` por defecto). |
+| `JWT_SECRET` | String | Sí | — | Secreto simétrico de alta entropía (mínimo 32 caracteres, compartido con el API Gateway). |
+| `JWT_ACCESS_TOKEN_TTL` | String | No | `15m` | Tiempo de vida del Access Token. |
+| `REFRESH_TOKEN_TTL_DAYS` | Integer | No | `7` | Días de vigencia del Refresh Token (1 a 30). |
 | `RABBITMQ_URL` | String | Sí | `amqp://guest:guest@localhost:5672` | URI de conexión al broker de mensajería RabbitMQ. |
 | `RABBITMQ_STAFF_EXCHANGE`| String | No | `restaurant.staff.events` | Nombre del exchange topic para eventos de personal. |
 | `CORS_ALLOWED_ORIGINS` | String | No | `http://localhost:3000,http://localhost:5173` | Orígenes web autorizados para interactuar con la API. |
@@ -27,14 +25,15 @@ El **API Gateway** gestiona la ruta perimetral y requiere acceso a la llave púb
 
 | Variable | Tipo | Obligatoria | Valor por Defecto | Descripción |
 | :--- | :--- | :--- | :--- | :--- |
-| `GATEWAY_PORT` | Integer | No | `8080` | Puerto principal expuesto hacia clientes externos. |
-| `AUTH_SERVICE_URL` | String | Sí | `http://auth-service:4000` | URL interna del servicio de autenticación. |
-| `MENU_SERVICE_URL` | String | Sí | `http://menu-service:4001` | URL interna del servicio de catálogo y menú. |
-| `ORDERS_SERVICE_URL` | String | Sí | `http://orders-service:4002`| URL interna del servicio de comandas y cocina (KDS). |
-| `SALA_SERVICE_URL` | String | Sí | `http://sala-service:4003` | URL interna del servicio de sala y reservaciones. |
-| `INVENTORY_SERVICE_URL`| String | Sí | `http://inventory-service:4004`| URL interna del servicio de almacén e inventario. |
-| `BILLING_SERVICE_URL` | String | Sí | `http://billing-service:4005`| URL interna del servicio de cuentas y cobros. |
-| `JWT_PUBLIC_KEY_PATH` | String | Sí | `./certs/jwt-public.pem` | Llave pública para validar firmas sin interrogar a Auth. |
+| `KONG_PROXY_PORT` | Integer | No | `8000` | Puerto principal del API Gateway Kong expuesto hacia clientes. |
+| `AUTH_SERVICE_URL` | String | Sí | `http://auth-backend:3000` | URL interna del servicio de autenticación. |
+| `MENU_SERVICE_URL` | String | Sí | `http://menu-backend:8080` | URL interna del servicio de catálogo y menú. |
+| `ORDERS_SERVICE_URL` | String | Sí | `http://orders-backend:8082`| URL interna del servicio de comandas (POS). |
+| `KITCHEN_SERVICE_URL` | String | Sí | `http://kitchen-backend:8086`| URL interna del servicio de cocina (KDS). |
+| `FLOOR_SERVICE_URL` | String | Sí | `http://floor-backend:8085` | URL interna del servicio de sala y reservaciones. |
+| `INVENTORY_SERVICE_URL`| String | Sí | `http://inventory-backend:3000`| URL interna del servicio de almacén e inventario. |
+| `PAYMENTS_SERVICE_URL` | String | Sí | `http://payments-backend:8084`| URL interna del servicio de caja y facturación. |
+| `JWT_SECRET` | String | Sí | — | Secreto HS256 compartido con Auth-Backend para validar firmas en el Gateway. |
 | `RATE_LIMIT_MAX_REQ` | Integer | No | `100` | Límite máximo de peticiones por minuto por dirección IP. |
 
 ---

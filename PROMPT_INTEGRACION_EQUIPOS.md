@@ -153,6 +153,7 @@ El Shell monta tu `<App />` pasando props de usuario y token, y además guarda l
      - **Órdenes (`MESERO`):** `orders:orders:view`, `orders:orders:create`, `orders:orders:update`, `orders:orders:confirm`, `orders:orders:cancel`, `orders:orders:transfer`, `orders:items:redo`, `orders:orders:request_bill` *(Admin: `orders:orders:void_admin`)*
      - **Cocina (`CHEF_MASTER`):** `kitchen:queues:view`, `kitchen:orders:start_preparation`, `kitchen:items:ready`, `kitchen:orders:ready`, `kitchen:items:reject`, `kitchen:items:cancel`, `kitchen:orders:void_error`, `orders:orders:view`
      - **Caja (`CAJERO`):** `billing:invoices:create`, `billing:reports:view`
+     - **Personal (`ADMINISTRADOR` / roles con permiso):** `staff:view`, `staff:manage` *(Nota: `GET /api/v1/staff` también permite lectura operativa sin datos sensibles a usuarios con `staff:view`, `sala:tables:view`, `sala:tables:occupy` o `sala:tables:assign_waiter`)*
 
 3. **Evitar Sidebars / Logins duplicados:**
    El Shell ya incluye el Sidebar global de navegación entre módulos y la pantalla de login. Si este microfrontend tenía un sidebar propio de todo el restaurante o pantalla de login propia, ocúltalo cuando se monte desde el Shell.

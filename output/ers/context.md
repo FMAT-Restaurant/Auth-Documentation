@@ -17,7 +17,7 @@ En consecuencia, las responsabilidades de Auth abarcan:
 - **Restricción de Modificación de Perfil:** Solo el Administrador puede auto-editar sus datos personales; el personal operativo (`STAFF`) tiene bloqueada la auto-edición de sus datos personales.
 - **Emisión de identificadores estructurados:** Asignación automática e inmutable del identificador de personal con máscara `XYYYYYY` (1 carácter alfabético en mayúscula seguido de 6 dígitos numéricos), con unicidad global en la base de datos local.
 - **Gestión de contraseñas temporales y forzado de primer ingreso:** Proveer contraseñas de primer uso generadas por el sistema y forzar la transición a contraseña personal en el primer inicio de sesión mediante contención operativa perimetral.
-- **Autorización híbrida por roles dinámicos y permisos granulares (RBAC + PBAC):** Definición de roles del sistema (`HOST`, `ALMACENISTA`, `MESERO`, `CHEF_MASTER`) y creación libre de roles personalizados basados en el catálogo transversal de permisos operacionales (`inventory:*`, `orders:*`, `menu:*`, `kitchen:*`, `sala:*`, `billing:*`).
+- **Autorización híbrida por roles dinámicos y permisos granulares (RBAC + PBAC):** Definición de roles del sistema (`HOST`, `ALMACENISTA`, `MESERO`, `CHEF_MASTER`, `GESTOR_MENU`, `CAJERO`) y creación libre de roles personalizados basados en el catálogo transversal de permisos operacionales (`inventory:*`, `orders:*`, `menu:*`, `kitchen:*`, `sala:*`, `billing:*`, `staff:*`).
 - **Emisión e invalidación de tokens de acceso:** Generación de JSON Web Tokens (JWT) firmados digitalmente (HS256) que portan la identidad, los roles vigentes, los permisos granulares y el estado de cambio de contraseña, permitiendo la validación descentralizada en el API Gateway y otros servicios.
 - **Publicación de eventos operacionales de personal:** Difusión asíncrona mediante RabbitMQ de eventos de dominio (`StaffMemberCreated`, `StaffRolesUpdated`, `StaffStatusChanged`) para la alimentación de proyecciones dependientes en microservicios consumidores.
 
@@ -39,7 +39,8 @@ flowchart TD
 
     subgraph Dominio_Operativo["BOUNDED CONTEXTS OPERACIONALES"]
         Sala["Servicio Sala / Host<br/>(Proyección de Personal de servicio,<br/>mesas y comensales)"]
-        Orders["Servicio Orders + Kitchen<br/>(Comandas por personal autorizado,<br/>despacho KDS en cocina)"]
+        Orders["Servicio Orders (POS)<br/>(Comandas por personal autorizado)"]
+        Kitchen["Servicio Kitchen (KDS)<br/>(Despacho y preparación en cocina)"]
         Menu["Servicio Menu<br/>(Catálogo comercial y precios)"]
         Inventory["Servicio Inventory<br/>(Existencias, ingredientes y stock)"]
         Billing["Servicio Billing & Payments<br/>(Cuentas y cobro)"]

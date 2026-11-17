@@ -6,8 +6,8 @@ Este documento registra los puntos de diseño complementarios, supuestos operati
 
 ## 1. Decisiones Consolidadas
 
-### DEC-AUTH-001 — Desacoplamiento de Staff ID (`XYYYYYY`) y Adopción del Prefijo Canónico `'E'`
-- **Resolución:** Dado que los roles son etiquetas descriptivas libres asignadas por el Administrador (ej. *"Líder de inventario"*, *"Mesero de terraza"*) y no enums fijos, el carácter `X` en el identificador `XYYYYYY` adopta de manera canónica el prefijo `'E'` (Empleado: `E000001` a `E999999`). Esto garantiza que el identificador sea estrictamente inmutable y permanezca neutral ante cualquier modificación de cargo o funciones del personal.
+### DEC-AUTH-001 — Formato de Staff ID (`XYYYYYY`) por Rol Inicial
+- **Resolución:** Cada miembro del personal operativo recibe un identificador único e inmutable con máscara `XYYYYYY`, donde `X` representa la inicial del rol principal asignado al momento del alta (ej. `M000001` para Mesero, `C000001` para Chef, `H000001` para Host, `A000001` para Almacenista, `G000001` para Gestor de Menú, `J000001` para Cajero, o `'E'` como prefijo genérico para roles personalizados) seguido de un correlativo de seis dígitos. El identificador es inmutable aunque posteriormente se modifiquen sus roles.
 
 ### DEC-AUTH-002 — Adopción del FMAT UI Kit v2.0 para Interfaces de Auth
 - **Resolución:** Toda la interfaz de usuario de `Auth-Frontend` (Pantalla de Autenticación, Selector de Pestañas, Modales de Cambio de Clave y Panel de Gestión de Personal) se implementa siguiendo estrictamente la **Guía visual de componentes (Versión 2.0)** del proyecto FMAT Restaurant:
