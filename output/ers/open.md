@@ -94,3 +94,14 @@ A partir del análisis crítico de dependencias entre los equipos del salón, se
   2. *A nivel de microservicio interno:* El Gateway valida autenticación y contraseña temporal, inyectando `X-User-Permissions`, para que cada microservicio verifique internamente con middlewares sus propios permisos.
 - **Propuesta:** Adoptar el enfoque híbrido donde el Gateway protege el perímetro y propaga cabeceras sanitizadas para autorización fina downstream.
 - **Estado:** En consenso con los demás equipos de backend.
+
+---
+
+### OPEN-AUTH-006 — Hardening de Resolución Dinámica de Hostname (`auto`) y CORS en Desarrollo LAN
+- **Contexto:** Para facilitar pruebas en redes locales cambiantes sin editar `.env`, `Auth-Frontend` soporta `VITE_API_BASE_URL=auto` (resolviendo `window.location.hostname:4000`) y `VITE_GATEWAY_URL=auto` (reescribiendo `http://localhost:808x` en el middleware de desarrollo de `vite.config.ts` según `req.headers.host`).
+- **Riesgos identificados:**
+  1. *Host Header Injection (solo `vite dev`):* Un `Host` manipulado en la petición hacia `/remote/*` podría reescribir la URL destino de los microfrontends hacia un servidor externo y filtrar el `Authorization: Bearer <token>`.
+  2. *Exposición en producción:* Usar `auto` fuera de desarrollo provocaría peticiones hacia puertos `:4000`/`:8000` sobre el dominio público o facilitaría *DNS Rebinding*.
+  3. *Acumulación de IPs en `CORS_ORIGINS` (Kong):* Mantener IPs temporales de redes compartidas en `API-Gateway/.env` amplía innecesariamente la superficie permitida si otra máquina hereda esa IP por DHCP.
+- **Mitigación recomendada:** Validar `reqHostname` en `vite.config.ts` contra `localhost`, `127.0.0.1` o rangos RFC 1918 (con fallback a `localhost`), restringir `auto` a `import.meta.env.DEV` y limpiar `CORS_ORIGINS` antes de producción.
+- **Estado:** Documentado como deuda técnica de hardening.
