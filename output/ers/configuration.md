@@ -34,6 +34,7 @@ El **API Gateway** gestiona la ruta perimetral y requiere acceso a la llave púb
 | `INVENTORY_SERVICE_URL`| String | Sí | `http://inventory-backend:3000`| URL interna del servicio de almacén e inventario. |
 | `PAYMENTS_SERVICE_URL` | String | Sí | `http://payments-backend:8084`| URL interna del servicio de caja y facturación. |
 | `JWT_SECRET` | String | Sí | — | Secreto HS256 compartido con Auth-Backend para validar firmas en el Gateway. |
+| `JWT_AUDIENCE` | String | No | `urn:fmat:restaurant` | Claim `aud` que exige el plugin `auth-perimeter` en las rutas protegidas. Debe coincidir con `JWT_AUDIENCE` de Auth-Backend. |
 | `RATE_LIMIT_MAX_REQ` | Integer | No | `100` | Límite máximo de peticiones por minuto por dirección IP. |
 
 ---
