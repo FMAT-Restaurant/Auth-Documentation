@@ -133,5 +133,12 @@ El servicio Auth deberá registrar de forma estructurada en su bitácora de audi
 
 **Tipo:** No Funcional / Auditoría  
 **Fuente:** Estándares de Trazabilidad y Verificación FMAT  
+**Implementación (Auth-Backend #33):** Cada fila de `audit_logs` guarda `userId` (ejecutor), `action`, `ipAddress` (de `req.ip`, respetando `trust proxy`), `userAgent`, `details` (JSON, nunca contraseñas) y `createdAt`. Acciones registradas:
+- Autenticación: `SETUP_ADMIN`, `LOGIN_SUCCESS`, `LOGIN_FAILED`, `LOGOUT`, `PASSWORD_CHANGED`, `PASSWORD_RESET_REQUESTED`, `PROFILE_UPDATED`, `USER_DELETED`.
+- Personal: `STAFF_CREATED`, `STAFF_UPDATED`, `STAFF_ROLES_UPDATED`, `STAFF_STATUS_CHANGED` (indica si se revocaron sesiones), `STAFF_DELETED`, `PASSWORD_RESET_BY_ADMIN`.
+- Roles y permisos: `ROLE_CREATED`, `ROLE_UPDATED` (con permisos anteriores y nuevos), `ROLE_DELETED`.
+
+Detrás del API Gateway, `ipAddress` es la IP que ve Kong (en desarrollo, la del proxy de Vite).
+
 **Verificación:** Prueba: Realizar una secuencia de acciones críticas (login fallido, cambio de permisos) e inspeccionar que las filas correspondientes en la tabla `AUDIT_LOG` se registren de forma íntegra.  
 **Estado:** Confirmado  
