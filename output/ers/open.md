@@ -54,7 +54,8 @@ A partir del análisis crítico de dependencias entre los equipos del salón, se
 
 ### GUIDE-AUTH-004 — Estabilidad y Congelamiento de Contratos de Eventos
 - **Problema:** Modificaciones intempestivas en los nombres de las colas o payloads de RabbitMQ rompen los consumidores dependientes de otros equipos (como la sincronización de meseros en Sala).
-- **Directriz:** El exchange `restaurant.staff.events` y los eventos `staff.created`, `staff.permissions.updated` y `staff.status.changed` se mantendrán estrictamente versionados y comunicados en el repositorio central `Documentation`.
+- **Directriz:** El exchange `restaurant.staff.events` y los eventos `staff.created`, `staff.roles.updated`, `staff.status.changed` y `staff.deleted` se mantendrán estrictamente versionados y comunicados en el repositorio central `Documentation`.
+- **Nota (22/11/2026):** Hoy ningún microservicio consume estos eventos y RabbitMQ es opcional en Auth. Ver [OPEN-AUTH-007](#open-auth-007--rabbitmq-opcional-en-auth-eventos-de-personal-sin-consumidores).
 
 ---
 
@@ -105,3 +106,14 @@ A partir del análisis crítico de dependencias entre los equipos del salón, se
   3. *Acumulación de IPs en `CORS_ORIGINS` (Kong):* Mantener IPs temporales de redes compartidas en `API-Gateway/.env` amplía innecesariamente la superficie permitida si otra máquina hereda esa IP por DHCP.
 - **Mitigación recomendada:** Validar `reqHostname` en `vite.config.ts` contra `localhost`, `127.0.0.1` o rangos RFC 1918 (con fallback a `localhost`), restringir `auto` a `import.meta.env.DEV` y limpiar `CORS_ORIGINS` antes de producción.
 - **Estado:** Documentado como deuda técnica de hardening.
+
+---
+
+### OPEN-AUTH-007 — RabbitMQ opcional en Auth: eventos de personal sin consumidores
+- **Contexto (22/11/2026):** Auth publica `staff.created`, `staff.roles.updated`, `staff.status.changed` y `staff.deleted` en el exchange `restaurant.staff.events`, pero una búsqueda en todos los repositorios de la organización no encontró ningún consumidor. La arquitectura de Sala (`Floor-Module/agents/ARCHITECTURE.md`) indica que Sala no consume eventos externos, y desde Auth-Backend #28 los demás servicios pueden consultar `GET /api/v1/staff` por PBAC para obtener al personal. Mantener el broker obligatorio solo generaba errores en el arranque y un `/health` en `degraded`.
+- **Decisión:** RabbitMQ pasa a ser **opcional** en Auth. Se conserva el código de publicación por si algún equipo necesita los eventos más adelante:
+  - `RABBITMQ_URL` vacía o sin definir: Auth no se conecta, no publica eventos ni registra errores, y `GET /health` responde `status: healthy` con `dependencies.rabbitmq: disabled`.
+  - `RABBITMQ_URL` definida: Auth publica los eventos. Si el broker no está disponible, `/health` responde `degraded` con `rabbitmq: disconnected` y en producción se registra como error.
+- **Para consumir los eventos:** el equipo interesado lo comunica al equipo de Auth, que configura `RABBITMQ_URL` en el entorno compartido y declara la cola correspondiente (ver `configuration.md`).
+- **Alternativa descartada por ahora:** eliminar por completo los eventos y la dependencia `amqplib`. Se reconsiderará si ningún equipo los solicita.
+- **Estado:** Implementado (`feat/rabbitmq-opcional` en Auth-Backend).
