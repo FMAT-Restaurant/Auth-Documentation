@@ -123,3 +123,16 @@ A partir del análisis crítico de dependencias entre los equipos del salón, se
 - **Para consumir los eventos:** el equipo interesado lo comunica al equipo de Auth, que configura `RABBITMQ_URL` en el entorno compartido y declara la cola correspondiente (ver `configuration.md`).
 - **Alternativa descartada por ahora:** eliminar por completo los eventos y la dependencia `amqplib`. Se reconsiderará si ningún equipo los solicita.
 - **Estado:** Implementado (`feat/rabbitmq-opcional` en Auth-Backend).
+
+---
+
+### OPEN-AUTH-008 — Access token solo en memoria en el shell (Auth-Frontend #6)
+- **Contexto (23/11/2026):** El shell guardaba la sesión (access token y usuario) en `localStorage` (`fmat_restaurant_auth_session`). Cualquier XSS en el shell o en un microfrontend federado podía leer el token. El refresh token ya vivía en una cookie HttpOnly (`SameSite=Lax`, `path=/api/v1/auth`, 7 días).
+- **Decisión:** El access token y el usuario viven **solo en memoria** del shell:
+  - Al arrancar, el shell borra la clave `fmat_restaurant_auth_session` que dejaron versiones anteriores.
+  - Al recargar, muestra "Cargando sesión…" y recupera la sesión: primero se la pide a otra pestaña abierta (`BroadcastChannel`, mismo origen) y, si no hay ninguna, llama a `POST /api/v1/auth/refresh` (cookie) y `GET /api/v1/auth/me`.
+  - Una sola restauración a la vez: el refresh token rota en cada uso y dos renovaciones simultáneas con la misma cookie harían fallar la segunda.
+  - Cerrar sesión en una pestaña la cierra en todas.
+- **Contrato con los microfrontends:** el token llega **solo** por la prop `token` de `FederatedModuleProps` (y el usuario por `currentUser`); el shell la actualiza cada vez que renueva el token (cada ≤ 15 min). **Ya no se debe leer `localStorage`**: en Menú, Órdenes/KDS y Sala ese acceso queda solo como respaldo para ejecutar el microfrontend por separado en desarrollo. Inventario no lo usa.
+- **Pruebas:** recargar la página recupera la sesión sin volver al login; una segunda pestaña la obtiene de la primera sin llamar a la API; `localStorage` queda vacío.
+- **Estado:** Implementado (Auth-Frontend, `feat/token-en-memoria`).
