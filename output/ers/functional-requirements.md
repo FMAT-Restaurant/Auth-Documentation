@@ -324,7 +324,7 @@ El servicio Auth deberá permitir únicamente a los usuarios con tipo `ADMIN` ac
 ### REQ-AUTH-022 — Endpoint de Verificación de Salud del Servicio (`/health`)
 
 **Requisito:**
-El servicio Auth deberá exponer un endpoint público `GET /health` que informe el estado de operatividad del microservicio para monitorización y healthchecks de orquestación (Docker, Kubernetes). Respuesta: `{ status: "healthy" | "degraded", timestamp, dependencies: { rabbitmq: "connected" | "disconnected" | "disabled" } }`. El estado es `degraded` solo si RabbitMQ está configurado y no conecta; con RabbitMQ deshabilitado es `healthy`.
+El servicio Auth deberá exponer un endpoint público `GET /health` que informe el estado de operatividad del microservicio para monitorización y healthchecks de orquestación (Docker, Kubernetes). Respuesta: `{ status: "healthy" | "degraded", timestamp, uptime, dependencies: { rabbitmq: "connected" | "disconnected" | "disabled" } }`, donde `uptime` son los segundos (enteros) desde que arrancó el proceso. El estado es `degraded` solo si RabbitMQ está configurado y no conecta; con RabbitMQ deshabilitado es `healthy`.
 
 **Tipo:** No Funcional / Operacional  
 **Fuente:** Requisitos de Observabilidad FMAT  
