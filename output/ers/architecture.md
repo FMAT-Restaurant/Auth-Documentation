@@ -86,7 +86,7 @@ El token de acceso emitido por el servicio Auth es un JSON Web Token estándar (
 {
   "iss": "urn:fmat:restaurant:auth",
   "sub": "usr_9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d",
-  "aud": "urn:fmat:restaurant:api",
+  "aud": "urn:fmat:restaurant",
   "iat": 1790294400,
   "exp": 1790298000,
   "staffId": "M000104",
@@ -105,6 +105,8 @@ El token de acceso emitido por el servicio Auth es un JSON Web Token estándar (
 ```
 
 ### Definición de Claims:
+- `iss`: Emisor, siempre `urn:fmat:restaurant:auth`. Lo verifican el API Gateway (`auth-perimeter`) y Sala.
+- `aud`: Audiencia, `urn:fmat:restaurant` (constante `JWT_AUDIENCE` en Auth-Backend). La verifican Auth-Backend y el API Gateway (`auth-perimeter`, variable `JWT_AUDIENCE`); un token sin `aud` o con otro valor recibe `401`. Si se cambia, debe cambiarse en ambos a la vez. *(La versión inicial de esta ERS proponía `urn:fmat:restaurant:api`; se adoptó `urn:fmat:restaurant` al implementarlo en Auth-Backend #39.)*
 - `sub`: Identificador universal único del usuario (UUID v4).
 - `staffId`: Identificador estructurado `XYYYYYY`. Para el Administrador/Gerente toma el valor literal `ADM000001` o `ADMIN`.
 - `roles`: Arreglo de cadenas con los códigos de roles asignados (`ADMINISTRADOR`, `HOST`, `ALMACENISTA`, `MESERO`, `CHEF_MASTER` o roles personalizados `ROL_*`).
