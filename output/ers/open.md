@@ -105,7 +105,13 @@ A partir del análisis crítico de dependencias entre los equipos del salón, se
   2. *Exposición en producción:* Usar `auto` fuera de desarrollo provocaría peticiones hacia puertos `:4000`/`:8000` sobre el dominio público o facilitaría *DNS Rebinding*.
   3. *Acumulación de IPs en `CORS_ORIGINS` (Kong):* Mantener IPs temporales de redes compartidas en `API-Gateway/.env` amplía innecesariamente la superficie permitida si otra máquina hereda esa IP por DHCP.
 - **Mitigación recomendada:** Validar `reqHostname` en `vite.config.ts` contra `localhost`, `127.0.0.1` o rangos RFC 1918 (con fallback a `localhost`), restringir `auto` a `import.meta.env.DEV` y limpiar `CORS_ORIGINS` antes de producción.
-- **Estado:** Documentado como deuda técnica de hardening.
+- **Actualización (23/11/2026) — API del shell por el Gateway en el mismo origen:** `VITE_API_BASE_URL=auto` ya no resuelve `hostname:4000`; ahora es `/api/v1` en el mismo origen de la app. El servidor de Vite (desarrollo, `VITE_GATEWAY_TARGET`, por defecto `http://localhost:8000`) y nginx (producción, `GATEWAY_UPSTREAM`, por defecto `http://fmat-api-gateway:8000`) reenvían `/api/` al API Gateway, que valida el JWT antes de llegar a Auth-Backend. Efectos:
+  - El shell **nunca** llama directo al backend en el puerto 4000; toda su API pasa por Kong (`iss`, `aud`, `exp`).
+  - Funciona con cualquier IP o hostname (p. ej., la red de la facultad) sin agregar orígenes a CORS, y la cookie del refresh token es de primera parte.
+  - El destino del proxy se resuelve en el servidor, no desde la cabecera `Host`, así que el riesgo 1 ya no aplica a la API del shell. El riesgo 2 desaparece para `VITE_API_BASE_URL`.
+  - **Sigue pendiente** para los microfrontends: `VITE_GATEWAY_URL=auto` aún usa `req.headers.host:8000` (riesgos 1 y 3), y al abrir la app por IP hay que agregar `http://<IP>:3000` a `CORS_ORIGINS` del Gateway. No se cambió porque el Gateway expone rutas de Inventario en la raíz (`/items`, `/batches`…), que chocarían con las rutas del SPA si se sirvieran en el mismo origen.
+  - Al pasar por el proxy, el backend ve la IP del Gateway para todas las peticiones; el límite por IP del login se comparte entre los usuarios de una misma instalación (el límite por cuenta no cambia).
+- **Estado:** Parcialmente mitigado (API del shell). Pendiente para microfrontends.
 
 ---
 
