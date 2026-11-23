@@ -13,7 +13,7 @@ El servicio **Auth** se configura de manera desacoplada mediante variables de en
 | `JWT_SECRET` | String | Sí | — | Secreto simétrico de alta entropía (mínimo 32 caracteres, compartido con el API Gateway). |
 | `JWT_ACCESS_TOKEN_TTL` | String | No | `15m` | Tiempo de vida del Access Token. |
 | `REFRESH_TOKEN_TTL_DAYS` | Integer | No | `7` | Días de vigencia del Refresh Token (1 a 30). |
-| `RABBITMQ_URL` | String | Sí | `amqp://guest:guest@localhost:5672` | URI de conexión al broker de mensajería RabbitMQ. |
+| `RABBITMQ_URL` | String | No | — (vacía = deshabilitado) | URI del broker RabbitMQ. Vacía o sin definir: no se publican eventos y `/health` reporta `rabbitmq: disabled`. Definida pero inaccesible: `/health` responde `degraded`. Ver OPEN-AUTH-007. |
 | `RABBITMQ_STAFF_EXCHANGE`| String | No | `restaurant.staff.events` | Nombre del exchange topic para eventos de personal. |
 | `CORS_ALLOWED_ORIGINS` | String | No | `http://localhost:3000,http://localhost:5173` | Orígenes web autorizados para interactuar con la API. |
 
@@ -40,7 +40,9 @@ El **API Gateway** gestiona la ruta perimetral y requiere acceso a la llave púb
 
 ## Topología y Declaración de Infraestructura en RabbitMQ
 
-El equipo de Auth es responsable de declarar y custodiar la topología base del broker de mensajería para el personal:
+El equipo de Auth es responsable de declarar y custodiar la topología base del broker de mensajería para el personal.
+
+> **Estado actual (OPEN-AUTH-007):** RabbitMQ es opcional y hoy ningún microservicio consume estos eventos; las colas `sala.staff-sync` y `audit.staff-history` de abajo son la topología **prevista**, no desplegada. Se declaran solo cuando un equipo solicite consumir los eventos.
 
 ```mermaid
 flowchart LR

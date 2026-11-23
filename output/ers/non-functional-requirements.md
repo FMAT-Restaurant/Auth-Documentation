@@ -113,7 +113,7 @@ El API Gateway deberá ser capaz de validar y autorizar peticiones hacia microse
 ### NFR-AUTH-AVAIL-002 — Persistencia y Garantía de Entrega de Eventos en RabbitMQ
 
 **Requisito:**
-El exchange `restaurant.staff.events` y las colas vinculadas en RabbitMQ deberán estar declaradas como durables (`durable: true`), y los mensajes emitidos por Auth deberán contar con modo de entrega persistente (`delivery_mode: 2`) para evitar pérdida de eventos de personal ante reinicios del broker.
+Cuando RabbitMQ esté habilitado en Auth (`RABBITMQ_URL` definida; ver OPEN-AUTH-007), el exchange `restaurant.staff.events` y las colas vinculadas deberán estar declaradas como durables (`durable: true`), y los mensajes emitidos por Auth deberán contar con modo de entrega persistente (`delivery_mode: 2`) para evitar pérdida de eventos de personal ante reinicios del broker.
 
 **Tipo:** No Funcional / Confiabilidad  
 **Fuente:** Guía de Confiabilidad de Integración FMAT Restaurant  

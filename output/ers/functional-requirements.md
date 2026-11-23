@@ -249,12 +249,12 @@ El servicio Auth deberá permitir al Administrador cambiar el estado operativo d
 ### REQ-AUTH-017 — Emisión de Eventos de Dominio en RabbitMQ
 
 **Requisito:**
-El servicio Auth deberá publicar eventos estructurados bajo especificación CloudEvents en el broker RabbitMQ ante la creación de personal (`StaffMemberCreated`), cambio de roles (`StaffRolesUpdated`) y cambio de estado (`StaffStatusChanged`), conteniendo el `staffId`, nombre y roles asociados (sin identificadores multi-tenant).
+Cuando RabbitMQ esté habilitado (`RABBITMQ_URL` definida), el servicio Auth deberá publicar eventos estructurados bajo especificación CloudEvents ante la creación de personal (`StaffMemberCreated`), cambio de roles (`StaffRolesUpdated`), cambio de estado (`StaffStatusChanged`) y eliminación (`StaffMemberDeleted`), conteniendo el `staffId`, nombre y roles asociados (sin identificadores multi-tenant). Con `RABBITMQ_URL` vacía, el servicio opera normalmente sin publicar eventos.
 
-**Tipo:** Funcional  
+**Tipo:** Funcional (opcional)  
 **Fuente:** Integración Asíncrona de Ecosistema FMAT  
-**Verificación:** Prueba: Crear un miembro del personal en Auth y consumir el mensaje desde una cola de prueba en RabbitMQ; verificar que el payload contenga la lista de roles con el routing key correspondiente.  
-**Estado:** Confirmado  
+**Verificación:** Prueba: Con `RABBITMQ_URL` definida, crear un miembro del personal y consumir el mensaje desde una cola de prueba; verificar que el payload contenga la lista de roles con el routing key correspondiente. Con `RABBITMQ_URL` vacía, verificar que el alta funciona y que `/health` reporta `rabbitmq: disabled`.  
+**Estado:** Confirmado como opcional (22/11/2026). Sin consumidores actuales; ver OPEN-AUTH-007.  
 **Reglas Relacionadas:** BR-AUTH-015  
 
 ---
@@ -324,11 +324,11 @@ El servicio Auth deberá permitir únicamente a los usuarios con tipo `ADMIN` ac
 ### REQ-AUTH-022 — Endpoint de Verificación de Salud del Servicio (`/health`)
 
 **Requisito:**
-El servicio Auth deberá exponer un endpoint público `GET /health` que informe el estado de operatividad del microservicio (status `ok`, timestamp, uptime) para monitorización y healthchecks de orquestación (Docker, Kubernetes).
+El servicio Auth deberá exponer un endpoint público `GET /health` que informe el estado de operatividad del microservicio para monitorización y healthchecks de orquestación (Docker, Kubernetes). Respuesta: `{ status: "healthy" | "degraded", timestamp, dependencies: { rabbitmq: "connected" | "disconnected" | "disabled" } }`. El estado es `degraded` solo si RabbitMQ está configurado y no conecta; con RabbitMQ deshabilitado es `healthy`.
 
 **Tipo:** No Funcional / Operacional  
 **Fuente:** Requisitos de Observabilidad FMAT  
-**Verificación:** Prueba: Realizar una petición `GET /health`; comprobar respuesta HTTP 200 con `{ status: "ok" }`.  
+**Verificación:** Prueba: Realizar una petición `GET /health`; comprobar respuesta HTTP 200 con `status: "healthy"`. Con `RABBITMQ_URL` vacía, comprobar `dependencies.rabbitmq: "disabled"`; con una URL inaccesible, comprobar `status: "degraded"`.  
 **Estado:** Confirmado  
 **Reglas Relacionadas:** N/A  
 

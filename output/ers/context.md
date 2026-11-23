@@ -19,7 +19,7 @@ En consecuencia, las responsabilidades de Auth abarcan:
 - **Gestión de contraseñas temporales y forzado de primer ingreso:** Proveer contraseñas de primer uso generadas por el sistema y forzar la transición a contraseña personal en el primer inicio de sesión mediante contención operativa perimetral.
 - **Autorización híbrida por roles dinámicos y permisos granulares (RBAC + PBAC):** Definición de roles del sistema (`HOST`, `ALMACENISTA`, `MESERO`, `CHEF_MASTER`, `GESTOR_MENU`, `CAJERO`) y creación libre de roles personalizados basados en el catálogo transversal de permisos operacionales (`inventory:*`, `orders:*`, `menu:*`, `kitchen:*`, `sala:*`, `billing:*`, `staff:*`).
 - **Emisión e invalidación de tokens de acceso:** Generación de JSON Web Tokens (JWT) firmados digitalmente (HS256) que portan la identidad, los roles vigentes, los permisos granulares y el estado de cambio de contraseña, permitiendo la validación descentralizada en el API Gateway y otros servicios.
-- **Publicación de eventos operacionales de personal:** Difusión asíncrona mediante RabbitMQ de eventos de dominio (`StaffMemberCreated`, `StaffRolesUpdated`, `StaffStatusChanged`) para la alimentación de proyecciones dependientes en microservicios consumidores.
+- **Publicación de eventos operacionales de personal:** Difusión asíncrona mediante RabbitMQ de eventos de dominio (`StaffMemberCreated`, `StaffRolesUpdated`, `StaffStatusChanged`) para la alimentación de proyecciones dependientes en microservicios consumidores. **Opcional:** solo cuando `RABBITMQ_URL` está configurada; hoy ningún microservicio los consume (ver OPEN-AUTH-007).
 
 ---
 

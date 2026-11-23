@@ -16,7 +16,7 @@ Este repositorio contiene la definición documental, formal y verificable del bo
 Adicionalmente, este repositorio centraliza las especificaciones operativas de las responsabilidades transversales asignadas al equipo de Auth:
 1. **Microservicio de Autenticación y Autorización (Auth)**: Gestión autoritativa de restaurantes (tenants), credenciales, ciclo de vida del personal, roles como etiquetas dinámicas, matriz de permisos granulares (PBAC) y emisión de tokens criptográficos (JWT).
 2. **API Gateway**: Perímetro de seguridad, validación de firmas digitales de acceso, autorización perimetral y propagación segura de contexto de usuario y permisos hacia microservicios internos.
-3. **Broker de Eventos (RabbitMQ)**: Topología, exchanges y contratos de eventos emitidos ante cambios en el personal (como la sincronización de personal habilitado para servicio hacia el microservicio de Sala/Host).
+3. **Broker de Eventos (RabbitMQ)**: Topología, exchanges y contratos de eventos emitidos ante cambios en el personal (como la sincronización de personal habilitado para servicio hacia el microservicio de Sala/Host). **Opcional:** hoy ningún microservicio consume estos eventos y Auth funciona con RabbitMQ deshabilitado (ver OPEN-AUTH-007 en [open.md](output/ers/open.md)).
 
 ---
 

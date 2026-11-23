@@ -222,12 +222,15 @@ sequenceDiagram
 
 El servicio Auth actúa como productor de eventos para notificar al clúster de cambios relevantes en el personal y sus facultades operacionales.
 
+> **Integración opcional (OPEN-AUTH-007).** RabbitMQ solo se usa si `RABBITMQ_URL` está configurada. Hoy ningún microservicio consume estos eventos (Sala no consume eventos externos), así que en los entornos actuales puede estar deshabilitado; en ese caso `GET /health` reporta `rabbitmq: disabled`. Los servicios que necesiten datos del personal pueden consultar `GET /api/v1/staff` por PBAC.
+
 ### Topología de Mensajería:
 - **Exchange:** `restaurant.staff.events` (Tipo `topic`, durable).
 - **Routing Keys:**
   - `staff.created`: Emitido cuando el gerente da de alta un nuevo empleado con su etiqueta y permisos.
-  - `staff.permissions.updated`: Emitido al modificar la etiqueta de rol o la matriz de permisos de un empleado.
+  - `staff.roles.updated`: Emitido al modificar los roles de un empleado.
   - `staff.status.changed`: Emitido al activar o desactivar un perfil de personal.
+  - `staff.deleted`: Emitido al eliminar a un empleado.
 
 ### Ejemplo de Evento: `StaffMemberCreated`
 ```json
